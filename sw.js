@@ -6,7 +6,7 @@
    neprepíše — presne to sa raz stalo.
 
    Pri zmene súborov zvýš V aj BUILD v js/app.js. */
-const V = 'maturita-v5';
+const V = 'maturita-v6';
 const NET_TIMEOUT = 3000;
 const ASSETS = [
   './', './index.html', './styles.css',

@@ -64,8 +64,16 @@ a vymaže cache. Postup nechá na pokoji.
 Service worker je **network-first**: keď je sieť, appka je vždy najnovšia; keď
 nie je, do 3 sekúnd naskočí verzia z cache.
 
-Pri každom nasadení zvýš **obe** miesta naraz: `BUILD` v `js/app.js`
-a `V` v `sw.js`. Bez toho si prehliadač nechá starú verziu v cache.
+Pred každým nasadením spusti:
+
+```
+node bump.mjs
+```
+
+Zvýši verziu naraz na všetkých troch miestach — `BUILD` v `js/app.js`, `V`
+v `sw.js` a `?v=` pri skriptoch v `index.html` — a doplní dátum. To posledné
+je dôležité: GitHub Pages posiela `max-age=600`, takže bez zmeny URL by si
+prehliadač desať minút držal staré súbory.
 
 ## Prenos medzi zariadeniami
 
