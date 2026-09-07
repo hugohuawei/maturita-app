@@ -4,7 +4,7 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v3';
+const BUILD = 'v4';
 const BUILD_DATE = '7. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
@@ -801,5 +801,9 @@ save();
 render();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => reg.update().catch(() => {}))
+      .catch(() => {});
+  });
 }

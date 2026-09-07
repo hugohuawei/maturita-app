@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<title>Obnova appky</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root { --bg:#f7f6f3; --fg:#16181a; --soft:#5c6169; --line:#e2e0da; --card:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111315; --fg:#eceef0; --soft:#9aa0a8; --line:#292d31; --card:#191c1f; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; min-height:100dvh; background:var(--bg); color:var(--fg);
+    font:16px/1.5 -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    display:grid; place-items:center; padding:28px;
+  }
+  main { width:100%; max-width:420px; }
+  h1 { font-size:23px; font-weight:600; letter-spacing:-.02em; margin:0 0 8px; }
+  p { color:var(--soft); margin:0 0 18px; }
+  #stav {
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:16px; font-size:14px; white-space:pre-line; margin-bottom:18px;
+  }
+  a.btn {
+    display:block; text-align:center; text-decoration:none;
+    background:var(--fg); color:var(--bg); border-radius:14px;
+    padding:16px; font-weight:600;
+  }
+  .muted { font-size:13px; color:var(--soft); margin-top:16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Obnova appky</h1>
+  <p>Vyčistí uloženú verziu a stiahne najnovšiu. Tvoj postup — známky, poznámky a front — zostáva nedotknutý.</p>
+  <div id="stav">Pracujem…</div>
+  <a class="btn" href="./index.html#/dnes">Otvoriť appku</a>
+  <p class="muted">Ak si appku pridal na plochu, po tomto ju zavri cez prepínač aplikácií a otvor znova.</p>
+</main>
+<script>
+(async () => {
+  const out = [];
+  const say = (t) => { out.push(t); document.getElementById('stav').textContent = out.join('\n'); };
+  try {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) await r.unregister();
+    say(regs.length ? `Odstránený service worker (${regs.length})` : 'Žiadny service worker');
+  } catch { say('Service worker sa nepodarilo odstrániť'); }
+  try {
+    const keys = await caches.keys();
+    for (const k of keys) await caches.delete(k);
+    say(keys.length ? `Vymazaná cache: ${keys.join(', ')}` : 'Cache bola prázdna');
+  } catch { say('Cache sa nepodarilo vymazať'); }
+  try {
+    const raw = localStorage.getItem('maturita.v1');
+    const n = raw ? Object.keys(JSON.parse(raw).topics || {}).length : 0;
+    say(n ? `Postup zachovaný: ${n} tém` : 'Uložený postup: zatiaľ žiadny');
+  } catch { say('Postup: nedá sa prečítať'); }
+  say('Hotovo — klikni na Otvoriť appku.');
+})();
+</script>
+</body>
+</html>

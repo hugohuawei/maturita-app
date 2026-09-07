@@ -57,6 +57,13 @@ beží — ak sedí s poslednou nasadenou, máš aktuálnu appku.
 Vedľa je **Skontrolovať aktualizáciu**: zmaže cache service workera a načíta
 appku odznova. Postup v `localStorage` sa nedotýka.
 
+Ak by sa appka zasekla na starej verzii tak, že sa k tomu tlačidlu nedostaneš,
+otvor `/reset.html` — samostatná stránka, ktorá odregistruje service workera
+a vymaže cache. Postup nechá na pokoji.
+
+Service worker je **network-first**: keď je sieť, appka je vždy najnovšia; keď
+nie je, do 3 sekúnd naskočí verzia z cache.
+
 Pri každom nasadení zvýš **obe** miesta naraz: `BUILD` v `js/app.js`
 a `V` v `sw.js`. Bez toho si prehliadač nechá starú verziu v cache.
 
