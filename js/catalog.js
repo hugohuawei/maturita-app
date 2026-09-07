@@ -13,12 +13,21 @@
 const SUBJECTS = [
   { key: 'sjl',     name: 'Slovenský jazyk a literatúra', short: 'SJL' },
   { key: 'obn-pol', name: 'Občianska — politológia a právo', short: 'OBN-POL' },
-  { key: 'obn-eko', name: 'Občianska — ekonómia', short: 'OBN-EKO' },
+  { key: 'obn-eko', name: 'Občianska — ekonómia a spoločnosť', short: 'OBN-EKO' },
+  { key: 'obn-fil', name: 'Občianska — filozofia a psychológia', short: 'OBN-FIL' },
   { key: 'bio',     name: 'Biológia', short: 'BIO' },
   { key: 'anj',     name: 'Angličtina', short: 'ANJ' },
 ];
 
-const PLACEHOLDER = 'Doplniť';
+/* Oblasti naprieč občianskou — v jednom maturitnom zadaní sa miešajú, tak
+   ich treba vidieť samostatne, nie len po vetvách. */
+const AREAS = [
+  'ekonómia',
+  'právo a politológia',
+  'sociológia a náboženstvá',
+  'inštitúcie',
+  'filozofia a psychológia',
+];
 
 /* --- Slovenský jazyk a literatúra (30) ---------------------------
    [názov, rozsah]. `rozsah` = autori a diela k téme. Na karte pri
@@ -86,7 +95,7 @@ const SJL = [
    'Konštantín a Metod (Proglas, Moravsko-panónske legendy) · Kliment · Hugolín Gavlovič · literatúra Veľkej Moravy'],
 ];
 
-/* --- Občianska — politológia a právo (28) ------------------------ */
+/* --- Občianska — politológia a právo (22) ----------------------- */
 const OBN_POL = [
   'Politológia',
   'Znaky štátu',
@@ -98,20 +107,52 @@ const OBN_POL = [
   'Ochrana práva',
   'Voľby',
   'Právo, právna norma',
+  'Právne systémy',
+  'Odvetvia práva a správne právo',
+  'Trestné právo',
+  'Občianske právo',
+  'Rodinné právo',
+  'Obchodné právo',
+  'Pracovné právo',
+  'Ľudské práva',
+  'Práva spotrebiteľa',
+  'Liberalizmus',
+  'Konzervativizmus',
+  'Socializmus',
 ];
 
-/* --- Občianska — ekonómia (22) ----------------------------------- */
+/* --- Občianska — ekonómia a spoločnosť (28) ---------------------
+   [názov, oblasť]. Vetva sa volá „ekonómia“, ale nie všetko v nej je
+   ekonomické — preto oblasť ako samostatný atribút. */
 const OBN_EKO = [
-  'Dejiny ekonomických teórií',
-  'Klasická, neoklasická a marxistická ekonomická teória',
-  'Moderné ekonomické teórie',
-  'Potreby, statky, trh',
-  'Trhový mechanizmus',
-  'Konkurencia',
-  'Nedokonalosti trhu a elasticita dopytu',
-  'Výrobné faktory',
-  'Trh práce, nezamestnanosť, mzda a produktivita práce',
-  'Podnik, živnosti',
+  ['Dejiny ekonomických teórií', 'ekonómia'],
+  ['Klasická, neoklasická a marxistická ekonomická teória', 'ekonómia'],
+  ['Moderné ekonomické teórie', 'ekonómia'],
+  ['Potreby, statky, trh', 'ekonómia'],
+  ['Trhový mechanizmus', 'ekonómia'],
+  ['Konkurencia', 'ekonómia'],
+  ['Nedokonalosti trhu a elasticita dopytu', 'ekonómia'],
+  ['Výrobné faktory', 'ekonómia'],
+  ['Trh práce, nezamestnanosť, mzda a produktivita práce', 'ekonómia'],
+  ['Podnik, živnosti', 'ekonómia'],
+  ['Obchodné spoločnosti', 'ekonómia'],
+  ['Vznik a formy peňazí', 'ekonómia'],
+  ['Bankový systém', 'ekonómia'],
+  ['Inflácia', 'ekonómia'],
+  ['Hospodársky cyklus, nezamestnanosť a inflácia', 'ekonómia'],
+  ['HDP', 'ekonómia'],
+  ['Monetárna politika', 'ekonómia'],
+  ['Fiškálna politika', 'ekonómia'],
+  ['Medzinárodný obchod a menová sústava', 'ekonómia'],
+  ['Medzinárodná a európska integrácia', 'inštitúcie'],
+  ['Orgány EÚ', 'inštitúcie'],
+  ['Sociologické pojmy', 'sociológia a náboženstvá'],
+  ['Judaizmus a islam', 'sociológia a náboženstvá'],
+  ['Kresťanstvo', 'sociológia a náboženstvá'],
+  ['Hinduizmus a budhizmus', 'sociológia a náboženstvá'],
+  ['Družstvá, združovanie podnikov a výrobné faktory podniku', 'ekonómia'],
+  ['OSN a OBSE', 'inštitúcie'],
+  ['Ústava a ústavný vývoj', 'právo a politológia'],
 ];
 
 /* --- Biológia (60 v 9 tematických celkoch) ----------------------- */
@@ -178,29 +219,64 @@ const BIO = [
   ['Biológia živočíchov a človeka', 'Pohlavné a nepohlavné rozmnožovanie, embryonálny vývin'],
 ];
 
+/* --- Angličtina (25) --------------------------------------------
+   [názov, otázky]. Pri angličtine sa nevybavujú fakty — karta ukáže
+   jednu náhodnú otázku a hovorí sa nahlas 90 sekúnd. Otázky sa dajú
+   dopĺňať priamo v appke (Témy → klik na tému). */
+const ANJ = [
+  ['Family', [
+    'Describe your family.',
+    'What are the advantages of a large family?',
+    'Are family values changing in Slovakia? Why?',
+    'Should grandparents live with their children?',
+  ]],
+  ['Housing', []],
+  ['Health Care', []],
+  ['Travelling and Transport', []],
+  ['Education', []],
+  ['People and Nature', []],
+  ['Free Time, Hobbies and Lifestyle', []],
+  ['Food', []],
+  ['Multicultural Society', []],
+  ['Fashion and Clothing', []],
+  ['Sports', []],
+  ['Shopping and Services', []],
+  ['Countries, Towns and Places', []],
+  ['Art and Culture', []],
+  ['Books and Literature', []],
+  ['People and Society', []],
+  ['Communication and Its Forms', []],
+  ['Mass Media', []],
+  ['Young People and Their World', []],
+  ['Jobs and Employment', []],
+  ['Science and Technology', []],
+  ['Examples and Ideals', []],
+  ['Human Relationships', []],
+  ['Slovakia', []],
+  ['English-Speaking Countries', []],
+];
+
 /* --- Zostavenie katalógu ----------------------------------------- */
 const pad = (n) => String(n).padStart(2, '0');
 
 const TOPICS = [
   ...SJL.map(([title, rozsah], i) => ({ id: `sjl-${pad(i + 1)}`, subject: 'sjl', num: i + 1, title, rozsah })),
 
-  ...Array.from({ length: 28 }, (_, i) => ({
+  ...OBN_POL.map((title, i) => ({
     id: `obn-pol-${pad(i + 1)}`, subject: 'obn-pol', num: i + 1,
-    title: OBN_POL[i] || PLACEHOLDER,
-    paused: i >= OBN_POL.length,
+    title, oblast: 'právo a politológia',
   })),
 
-  ...Array.from({ length: 22 }, (_, i) => ({
-    id: `obn-eko-${pad(i + 1)}`, subject: 'obn-eko', num: i + 1,
-    title: OBN_EKO[i] || PLACEHOLDER,
-    paused: i >= OBN_EKO.length,
+  ...OBN_EKO.map(([title, oblast], i) => ({
+    id: `obn-eko-${pad(i + 1)}`, subject: 'obn-eko', num: i + 1, title, oblast,
   })),
+
+  // obn-fil — vetva zatiaľ bez tém, v prehľade zostáva viditeľná
 
   ...BIO.map(([tc, title], i) => ({ id: `bio-${pad(i + 1)}`, subject: 'bio', num: i + 1, title, tc })),
 
-  ...Array.from({ length: 30 }, (_, i) => ({
-    id: `anj-${pad(i + 1)}`, subject: 'anj', num: i + 1,
-    title: PLACEHOLDER, paused: true,
+  ...ANJ.map(([title, otazky], i) => ({
+    id: `anj-${pad(i + 1)}`, subject: 'anj', num: i + 1, title, otazky,
   })),
 ];
 

@@ -1,13 +1,13 @@
 # Maturita 2027
 
-Denný retrieval naprieč 170 maturitnými témami. Statická stránka, bez backendu,
+Denný retrieval naprieč 165 maturitnými témami. Statická stránka, bez backendu,
 bez prihlasovania, bez externých volaní. Stav v `localStorage`.
 
 ## Obrazovky
 
 - **Dnes** — jedna karta, jedna téma. `1` = Viem · `2` = Čiastočne · `3` = Neviem · `medzerník` = časovač · `r` = ukázať rozsah
 - **Prehľad** — rozdelenie po predmetoch a bio celkoch, tempo, odhad dĺžky kola, graf V-tém
-- **Témy** — všetkých 170, filter podľa predmetu a známky, ručné hodnotenie, pozastavenie, poznámka, premenovanie, rozsah témy
+- **Témy** — všetkých 165, filter podľa predmetu a známky, ručné hodnotenie, pozastavenie, poznámka, premenovanie, rozsah témy
 - **N** — pracovný zoznam na štvrtok, zoradený podľa toho, ako dlho je téma v N
 - **Systém** — rozvrh, protokoly, šablóna, fázy roka + nastavenia a export/import
 
@@ -30,6 +30,17 @@ Prepínač v Systéme → Kolo. Keď je zapnutý, známky sa ukladajú, ale tém
 **nepreraďuje** — front ostáva nedotknutý a témy idú striktne v poradí podľa
 čísla, kolo za kolom. Slúži na prvé zmapovanie, čo vieš. Na obrazovke Dnes to
 označuje štítok `mapovanie`. Po vypnutí platí normálny algoritmus.
+
+## Angličtina sa správa inak
+
+Pri ANJ témach karta neukáže názov, ale **jednu náhodnú otázku** z poľa
+`otazky` (názov je pod ňou drobne). Otázky sa dopĺňajú priamo v appke —
+Témy → klik na tému → jedna otázka na riadok. Ak téma otázky nemá, karta
+ukáže názov a výzvu „doplniť otázky“.
+
+Časovač 90 sekúnd je pri angličtine zapnutý vždy, bez ohľadu na nastavenie —
+hovorenie nahlas je súčasť úlohy. Pod tlačidlami je pri ANJ iný výklad
+známok: V = 90 sekúnd plynulo, Č = hľadal som slová, N = po pol minúte nič.
 
 ## Rozsah témy
 

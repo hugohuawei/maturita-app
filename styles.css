@@ -372,3 +372,35 @@ code { font-family: var(--mono); font-size: .9em; }
   border: 1px solid var(--line); background: var(--surface);
   font-size: 12.5px; color: var(--ink-soft);
 }
+
+/* ---------- angličtina: otázka na karte ------------------------------ */
+.card__title--q { font-size: clamp(25px, 6.2vw, 36px); line-height: 1.24; }
+.card__topic {
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line);
+  font-size: 13px; letter-spacing: .02em; color: var(--ink-faint);
+}
+.noq {
+  margin-top: 18px; font-size: 13px; color: var(--c);
+  border-bottom: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+  display: inline-block; padding-bottom: 2px; cursor: pointer;
+}
+
+.anjkey { margin: 12px 0 0; display: grid; gap: 5px; font-size: 12px; line-height: 1.4; }
+.anjkey > div { display: flex; gap: 8px; align-items: baseline; }
+.anjkey dt { flex: none; width: 12px; text-align: center; }
+.anjkey dd { margin: 0; color: var(--ink-faint); }
+
+.sheet__qs { display: block; margin-bottom: 10px; }
+.sheet__qs b {
+  display: block; margin-bottom: 6px; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+}
+.sheet__qs textarea {
+  width: 100%; padding: 12px 14px; resize: vertical;
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--surface); font-size: 15px; line-height: 1.45;
+  font-family: inherit; -webkit-appearance: none;
+}
+
+.grp--empty { opacity: .55; }
+.grp--empty .bar { background: var(--line-soft); }

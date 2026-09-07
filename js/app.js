@@ -4,7 +4,7 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v6';
+const BUILD = 'v7';
 const BUILD_DATE = '7. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
@@ -78,13 +78,24 @@ function reconcile(s) {
   for (const t of TOPICS) {
     if (!s.topics[t.id]) {
       s.topics[t.id] = { grade: null, last: null, count: 0,
-                         paused: !!t.paused, note: '', title: null, nSince: null };
+                         paused: !!t.paused, note: '', title: null, nSince: null, otazky: null };
     }
     if (!known.has(t.id)) fresh.push(t.id);
   }
   if (fresh.length) s.queue.unshift(...fresh);
 
   if (s.round && (!Array.isArray(s.round.ids) || !s.round.ids.every((id) => CATALOG.has(id)))) s.round = null;
+
+  /* v1 → v2: zástupné položky `Doplniť` boli pozastavené preto, že nemali
+     názov. Teraz názvy majú, tak ich vráť do kola — ale len tie, ktoré si
+     nikdy nehodnotil, aby to nezrušilo tvoje vlastné pozastavenia. */
+  if ((s.version | 0) < 2) {
+    for (const t of TOPICS) {
+      const e = s.topics[t.id];
+      if (e && e.paused && !t.paused && !e.count) e.paused = false;
+    }
+    s.version = 2;
+  }
   return s;
 }
 
@@ -101,6 +112,23 @@ function save() {
 const st = (id) => state.topics[id];
 const titleOf = (id) => st(id)?.title || CATALOG.get(id).title;
 const scopeOf = (id) => CATALOG.get(id)?.rozsah || '';
+const isAnj = (id) => CATALOG.get(id)?.subject === 'anj';
+/** Otázky z katalógu, prebité tými, ktoré si dopísal v appke. */
+const questionsOf = (id) => {
+  const own = st(id)?.otazky;
+  return Array.isArray(own) ? own : (CATALOG.get(id)?.otazky || []);
+};
+
+/* Vybraná otázka drží počas celej karty — nemá preblikávať pri prekreslení. */
+let ask = null;
+function askOf(id) {
+  const qs = questionsOf(id);
+  if (!qs.length) { ask = null; return ''; }
+  if (!ask || ask.id !== id || ask.i >= qs.length) {
+    ask = { id, i: Math.floor(Math.random() * qs.length) };
+  }
+  return qs[ask.i];
+}
 const isActive = (id) => !st(id).paused;
 
 function counts(ids) {
@@ -188,7 +216,7 @@ function nextIds() {
 
 function startRound() {
   const ids = nextIds();
-  reveal = false; after = null;
+  reveal = false; after = null; ask = null;
   state.round = ids.length ? { ids, idx: 0, V: 0, C: 0, N: 0 } : null;
   save();
 }
@@ -221,20 +249,26 @@ function nextCard() {
 
 /* ---------- časovač ------------------------------------------------ */
 const timer = { running: false, done: false };
+/** Pri angličtine beží časovač vždy — 90 sekúnd hovorenia je súčasť úlohy. */
+const timerOnFor = (id) => state.settings.timer || isAnj(id);
+
 function resetTimer(autostart) {
   const bar = $('#timerbar');
   timer.done = false;
   if (!bar) return;
+  const r = state.round;
+  const on = r && r.ids[r.idx] ? timerOnFor(r.ids[r.idx]) : state.settings.timer;
   bar.classList.remove('done');
   bar.style.animation = 'none';
   void bar.offsetWidth;
   bar.style.animation = '';
-  timer.running = !!autostart && state.settings.timer;
+  timer.running = !!autostart && on;
   bar.style.animationPlayState = timer.running ? 'running' : 'paused';
-  bar.style.opacity = state.settings.timer ? '' : '0';
+  bar.style.opacity = on ? '' : '0';
 }
 function toggleTimer() {
-  if (!state.settings.timer || timer.done) return;
+  const r = state.round;
+  if (!(r && r.ids[r.idx] ? timerOnFor(r.ids[r.idx]) : state.settings.timer) || timer.done) return;
   const bar = $('#timerbar');
   if (!bar) return;
   timer.running = !timer.running;
@@ -276,6 +310,7 @@ function viewRound() {
   const parts = titleOf(id).split(' · ');
   const scope = scopeOf(id);
   const showScope = !!scope && (reveal || !!after);
+  const anj = isAnj(id);
 
   return `
     <div class="timer" aria-hidden="true">${after ? '' : '<div id="timerbar" class="timer__bar"></div>'}</div>
@@ -286,7 +321,8 @@ function viewRound() {
       </div>
       <div class="card" id="card">
         <div class="card__num">${esc(s.short)} ${t.num}</div>
-        <h1 class="card__title">${parts.map((p) => `<span>${esc(p)}</span>`).join('')}</h1>
+        ${anj ? cardAnj(id, titleOf(id))
+              : `<h1 class="card__title">${parts.map((p) => `<span>${esc(p)}</span>`).join('')}</h1>`}
         ${showScope ? `<div class="scope">${esc(scope)}</div>` : ''}
       </div>
       ${after ? `
@@ -304,12 +340,32 @@ function viewRound() {
               <span class="ans__label">${GRADES[g]}</span>
             </button>`).join('')}
         </div>
+        ${anj ? ANJ_KEY : ''}
       `}
     </div>`;
 }
 
 /** Nenápadný štítok režimu. */
 const modeTag = () => state.settings.mapping ? ' <i class="modetag">mapovanie</i>' : '';
+
+/* Pri angličtine je na karte otázka, nie názov témy — hovorí sa nahlas. */
+function cardAnj(id, title) {
+  const q = askOf(id);
+  if (!q) {
+    return `<h1 class="card__title"><span>${esc(title)}</span></h1>
+            <div class="noq" data-open="${id}">doplniť otázky</div>`;
+  }
+  return `<h1 class="card__title card__title--q"><span>${esc(q)}</span></h1>
+          <div class="card__topic">${esc(title)}</div>`;
+}
+
+/* Pri angličtine znamenajú známky niečo iné než pri faktoch. */
+const ANJ_KEY = `
+  <dl class="anjkey">
+    <div><dt class="num--V">${GLYPH.V}</dt><dd>hovoril som celých 90 sekúnd plynulo, bez dlhých pauz</dd></div>
+    <div><dt class="num--C">${GLYPH.C}</dt><dd>vedel som čo povedať, ale hľadal som slová a zasekával sa</dd></div>
+    <div><dt class="num--N">${GLYPH.N}</dt><dd>po pol minúte som nemal čo povedať</dd></div>
+  </dl>`;
 
 function roundIntro() {
   const active = idsOf((t) => isActive(t.id));
@@ -390,6 +446,10 @@ function viewOverview() {
     const ids = idsOf((t) => t.tc === tc);
     return { name: tc, short: '', c: counts(ids), last: null };
   });
+  const obnAreas = AREAS.map((a) => {
+    const ids = idsOf((t) => t.oblast === a);
+    return { name: a, short: '', c: counts(ids), last: null };
+  });
 
   return `
     <div class="pad">
@@ -417,6 +477,9 @@ function viewOverview() {
       <div class="rowlabel">Podľa predmetu</div>
       ${groups.map(barRow).join('')}
 
+      <div class="rowlabel">Občianska po oblastiach</div>
+      ${obnAreas.map(barRow).join('')}
+
       <div class="rowlabel">Biológia po tematických celkoch</div>
       ${bioTc.map(barRow).join('')}
 
@@ -428,6 +491,12 @@ function viewOverview() {
 function barRow(g) {
   const { c } = g;
   const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
+  if (!c.total) return `
+    <div class="grp grp--empty">
+      <div class="grp__head"><span class="grp__name">${esc(g.name)}</span>
+        <span class="grp__last">zatiaľ bez tém</span></div>
+      <div class="bar"></div>
+    </div>`;
   return `
     <div class="grp">
       <div class="grp__head">
@@ -526,6 +595,10 @@ function openSheet(id) {
       <input class="sheet__title" id="s-title" value="${esc(titleOf(id))}" aria-label="Názov témy">
       <input class="sheet__note" id="s-note" value="${esc(s.note)}" placeholder="Poznámka, jeden riadok" aria-label="Poznámka">
       ${scopeOf(id) ? `<div class="sheet__scope"><b>Rozsah</b>${esc(scopeOf(id))}</div>` : ''}
+      ${isAnj(id) ? `
+        <label class="sheet__qs"><b>Otázky — jedna na riadok</b>
+          <textarea id="s-qs" rows="4" placeholder="Describe your family.&#10;What are the advantages of a large family?">${esc(questionsOf(id).join('\n'))}</textarea>
+        </label>` : ''}
       <div class="answers answers--sm">
         ${['V', 'C', 'N'].map((g) => `
           <button class="ans ans--${g}${s.grade === g ? ' is-on' : ''}" data-sheet-grade="${g}">
@@ -546,6 +619,13 @@ function openSheet(id) {
     const nt = $('#s-title', sheet).value.trim();
     s.title = (!nt || nt === CATALOG.get(id).title) ? null : nt;
     s.note = $('#s-note', sheet).value.trim();
+    const qsEl = $('#s-qs', sheet);
+    if (qsEl) {
+      const qs = qsEl.value.split('\n').map((x) => x.trim()).filter(Boolean);
+      const base = CATALOG.get(id).otazky || [];
+      s.otazky = qs.join('\n') === base.join('\n') ? null : qs;
+      ask = null;
+    }
     save();
   };
   const close = () => { commit(); sheet.remove(); render(); };
@@ -613,50 +693,92 @@ function viewSystem() {
       <input type="file" id="file" accept="application/json,.json" hidden>
       <p class="muted small">Stav žije iba v tomto prehliadači. Prenos medzi telefónom a notebookom cez export/import.</p>
 
-      <div class="rowlabel">Týždenný rozvrh</div>
+      <div class="rowlabel">Týždenná mriežka</div>
       <div class="scrollx"><table class="tbl">
-        <thead><tr><th></th><th>Ráno 45 min</th><th>V škole</th><th>Poobede</th></tr></thead>
+        <thead><tr><th></th><th>Ráno 45'</th><th>V škole</th><th>Poobede</th></tr></thead>
         <tbody>
-          <tr><th>Po</th><td>15' retrieval + 30' bio</td><td>ONT 1–2 + OBN 5 → samoštúdium občianska</td><td>45' bio konsolidácia</td></tr>
-          <tr><th>Ut</th><td>15' retrieval + 30' angličtina</td><td>SEB bio → surové poznámky</td><td>šport</td></tr>
-          <tr><th>St</th><td>15' retrieval + 30' bio</td><td>BIO → surové poznámky</td><td>45' bio konsolidácia</td></tr>
-          <tr><th>Št</th><td>15' retrieval + 30' sloh</td><td>ONT 1–2 → samoštúdium občianska</td><td><b>90' flex — N-zoznam, testy, dobiehanie</b></td></tr>
-          <tr><th>Pi</th><td>15' retrieval</td><td>BIO → surové · OBN 3 → samoštúdium</td><td>voľno</td></tr>
+          <tr><th>Po</th><td>15' retrieval + 30' bio</td><td>ONT 1–2 + OBN 5 → OBN samoštúdium</td><td>45' bio konsolidácia</td></tr>
+          <tr><th>Ut</th><td>15' retrieval + 30' ANJ písomka</td><td>SEB bio → surové</td><td>šport</td></tr>
+          <tr><th>St</th><td>15' retrieval + 30' bio</td><td>BIO → surové</td><td>45' bio konsolidácia</td></tr>
+          <tr><th>Št</th><td>15' retrieval + 30' sloh</td><td>ONT 1–2 → OBN samoštúdium</td><td><b>90' — rozpis nižšie</b></td></tr>
+          <tr><th>Pi</th><td>15' retrieval</td><td>BIO → surové · OBN 3 → OBN samoštúdium</td><td>voľno</td></tr>
         </tbody>
       </table></div>
       <p class="muted small">Víkend: čítanie zo zoznamu literatúry, angličtina ako vstup (seriál bez titulkov, podcast).</p>
 
-      <div class="rowlabel">Protokol samoštúdia na občianskej — 40 min = 1 téma</div>
+      <div class="rowlabel">Ranný retrieval — 15 min, každý deň bez výnimky</div>
+      <p class="small">4–5 tém, ~3 minúty na tému:</p>
       <ol class="steps">
-        <li><b>5 min</b> — prečítaj len nadpisy v .docx, zavri, napíš spamäti čo vieš</li>
-        <li><b>20 min</b> — čítaj .docx, dopĺňaj a opravuj priamo do toho, čo si napísal</li>
-        <li><b>10 min</b> — zavri všetko, napíš záchytný bod: 5–7 odrážok vlastnými slovami</li>
-        <li><b>5 min</b> — kontrola proti .docx, doplň, ohodnoť V/Č/N</li>
+        <li>Prečítaj <b>len názov témy</b> (pri ANJ: jednu otázku)</li>
+        <li>Zavri všetko, 90 sekúnd hovor alebo píš spamäti — potom stop</li>
+        <li>Skontroluj proti vlastným poznámkam v Notability</li>
+        <li>Označ V / Č / N</li>
       </ol>
-      <p class="muted small">Tempo 5 tém týždenne.</p>
+      <p class="small">Neučím sa tu. Keď na tému neviem odpovedať, <b>je to výsledok merania, nie problém na riešenie</b> — riešim ho vo štvrtok. Ak si stranu prečítam, musím ju hneď zavrieť a skúsiť ju povedať spamäti; samotné prečítanie je takmer bezcenné.</p>
 
-      <div class="rowlabel">Šablóna bio poznámky</div>
-      <p class="small">Dva zošity v Notability. <b>„BIO surové“</b> — počas hodiny, chronologicky, jedna strana na hodinu, kostra a schémy, značka <code>!</code> pri všetkom, čo učiteľka zdôrazní. <b>„BIO témy 1–60“</b> — jedna strana na tému, poobede prenosom zo surového.</p>
-      <pre class="tpl">[číslo] — [názov témy]            (TC: [tematický celok])
+      <div class="rowlabel">Utorok ráno — angličtina, písomná časť (30 min)</div>
+      <p class="small">Strieda sa dvojtýždenne:</p>
+      <ul class="phases">
+        <li><b>Test</b> — jeden diel externej časti z ročníkovej sady (posledných 15 rokov), časovaný, bez slovníka, kontrola podľa kľúča → chyby do chybníka ANJ</li>
+        <li><b>Drill</b> — cielené precvičenie javu, ktorý sa v chybníku ANJ opakuje najčastejšie</li>
+      </ul>
+      <p class="muted small">Chybník rozhoduje, čo je v drill týždňoch. Neplánujem to dopredu.</p>
 
-Pojmy:            6–8 pojmov, každý jednou vetou
-Schéma:           jedna kresba
-Ako to funguje:   3–4 vety príčinnej reťaze
-Čo sa ma môžu spýtať:  3 otázky</pre>
-      <p class="muted small">Posledný blok je najdôležitejší — pri retrievale si zakry stranu, prečítaj tri otázky a odpovedz.</p>
+      <div class="rowlabel">Štvrtok, 90 minút</div>
+      <p class="small"><b>Prvých 20 min — vždy, bez výnimky:</b> N-zoznam. Nie rýchly recall ako ráno, ale poriadne rozobratie — prečo to neviem, čo presne mi chýba. Tu sa smie dopĺňať obsah, ráno nie.</p>
+      <p class="small"><b>Zvyšných 70 min</b> — rotácia podľa týždňa v mesiaci:</p>
+      <div class="scrollx"><table class="tbl">
+        <thead><tr><th>Týždeň</th><th>Náplň</th></tr></thead>
+        <tbody>
+          <tr><th>1.</th><td>SJL sloh — naostro, pod časom</td></tr>
+          <tr><th>2.</th><td>SJL didaktický test — externá časť, časovaný</td></tr>
+          <tr><th>3.</th><td>Bio/OBN dohĺbky — najťažšie N-témy, ktoré sa nezmestia do ranného recallu</td></tr>
+          <tr><th>4.</th><td>Dobiehanie — voľná kapacita</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted small">Angličtina sem nepatrí, má vlastný utorkový slot.</p>
+
+      <div class="rowlabel">Chybník</div>
+      <p class="small">Samostatná poznámka na predmet (<code>Chybník SJL</code>, <code>Chybník ANJ</code>) v Notability. Po každej písomke, slohu alebo teste doň idú <b>2–3 konkrétne chyby</b>, každá ako jeden riadok. Nie teória — moje vlastné chyby.</p>
+      <ul class="phases">
+        <li><i>Vedľajšia veta prívlastková vs. podmetová — prívlastková sa pýta AKÝ/KTORÝ a stojí pri podstatnom mene.</i></li>
+        <li><i>V slohu striedať slovnú zásobu — neopakovať „krásny“ viackrát na strane.</i></li>
+      </ul>
+      <p class="small"><b>V marci prechádzam chybník namiesto učenia nového.</b> Do januára by mal mať 15–20 riadkov.</p>
+
+      <div class="rowlabel">Protokol samoštúdia OBN — 40 min = 1 téma</div>
+      <p class="small">Robím na hodine, potichu, z učiteľových .docx.</p>
+      <ol class="steps">
+        <li><b>5 min</b> — prečítam len nadpisy, zavriem, napíšem spamäti čo viem <span class="muted">(na voľný papier, nie do finálnej poznámky)</span></li>
+        <li><b>20 min</b> — čítam .docx, dopĺňam a opravujem do toho, čo som napísal</li>
+        <li><b>10 min</b> — otvorím duplikovanú šablónu a napíšem záchytný bod: 5–7 odrážok vlastnými slovami, bez pozerania</li>
+        <li><b>5 min</b> — kontrola proti .docx, doplním, zapíšem dátum a V/Č/N</li>
+      </ol>
+      <p class="muted small">Poradie: ekonómia 1–21 a 26 (súvislá línia), potom 22–25 a 27–28, potom politológia a právo.</p>
+
+      <div class="rowlabel">Bio poznámky</div>
+      <p class="small">Dva zošity. <b>„BIO-PR surové“</b> a <b>„BIO-KU surové“</b> — píšem počas hodiny, chronologicky, jedna strana na hodinu, len kostra, schémy a <code>!</code> pri všetkom, čo učiteľka zdôrazní. Nikdy sa neupratujú.</p>
+      <p class="small"><b>„BIO 01“–„BIO 60“</b> — jedna strana na tému, píšem poobede prenosom zo surového. Šablóna:</p>
+      <pre class="tpl">[číslo] — [názov témy]                    (TC: [tematický celok])
+
+Čo sa ma môžu spýtať:  3 otázky      ← navrchu strany zámerne
+Pojmy:      6–8 pojmov, každý jednou vetou
+Schéma:     jedna kresba
+Ako to funguje:  3–4 vety príčinnej reťaze</pre>
+      <p class="muted small">Priradenie hodiny k číslu témy robím cez tlačený index „BIO — index tém 1–60“. Keď hodina pokryje dve témy, dopĺňam obe; strana sa uzatvára až keď je téma odučená celá.</p>
 
       <div class="rowlabel">Fázy roka</div>
       <ul class="phases">
-        <li><b>Sep–Dec</b> — občianska celá odbavená na hodinách. Bio zachytávanie beží. Retrieval kolo cez SJL. Jeden sloh a jeden didaktický test mesačne.</li>
-        <li><b>Jan–Feb</b> — odpadá nemčina, uvoľnia sa 4 hodiny týždenne. Slohový šprint: jeden sloh týždenne, test každé dva týždne, chybník po každom.</li>
-        <li><b>Marec</b> — týždeň pred písomkami plná simulácia v reálnom čase. Nič nové.</li>
-        <li><b>Mar–Jún</b> — čistý retrieval, kolo sa zrýchľuje, N-témy dostávajú štvrtkové bloky.</li>
+        <li><b>Sep–Dec</b> — OBN sa celá odbaví na hodinách. Bio zachytávanie beží. Ranné kolo cez SJL. Jeden sloh a jeden test mesačne.</li>
+        <li><b>Jan–Feb</b> — odpadá nemčina a KNJ, uvoľnia sa 4 hodiny týždenne. Slohový šprint: jeden sloh týždenne, test každé dva týždne. Štvrtková rotácia prirodzene skolabuje na sloh/test striedavo.</li>
+        <li><b>Marec</b> — týždeň pred písomkami plná simulácia v reálnom čase. Nič nové, len chybník.</li>
+        <li><b>Mar–Jún</b> — čistý retrieval, kolo sa zrýchľuje, N-témy dostávajú štvrtkové bloky. Utorkový slot sa uvoľní pre ústnu angličtinu.</li>
       </ul>
 
       <div class="rowlabel">Termíny</div>
       <ul class="phases">
-        <li><b>9.–12. marca 2027</b> — písomné maturity zo SJL a ANJ</li>
-        <li><b>koniec mája / začiatok júna 2027</b> — ústne maturity</li>
+        <li><b>9.–12. marca 2027</b> — písomné maturity SJL a ANJ</li>
+        <li><b>koniec mája / začiatok júna 2027</b> — ústne maturity: BIO, OBN, SJL, ANJ</li>
       </ul>
 
       <button class="ghost danger" data-act="reset">Vymazať všetok postup</button>
