@@ -45,8 +45,8 @@ function fmtDate(iso) {
 
 /* ---------- stav -------------------------------------------------- */
 function freshState() {
-  return { version: 1, queue: [], topics: {}, round: null, history: [],
-           settings: { roundSize: ROUND_DEFAULT, timer: true } };
+  return { version: 1, queue: [], topics: {}, round: null, history: [], mapAfter: null,
+           settings: { roundSize: ROUND_DEFAULT, timer: true, mapping: false } };
 }
 
 let state = load();
@@ -65,7 +65,8 @@ function reconcile(s) {
   s.topics ??= {};
   s.queue ??= [];
   s.history ??= [];
-  s.settings = Object.assign({ roundSize: ROUND_DEFAULT, timer: true }, s.settings);
+  s.settings = Object.assign({ roundSize: ROUND_DEFAULT, timer: true, mapping: false }, s.settings);
+  s.mapAfter = CATALOG.has(s.mapAfter) ? s.mapAfter : null;
   s.settings.roundSize = Math.min(10, Math.max(3, s.settings.roundSize | 0 || ROUND_DEFAULT));
 
   const known = new Set();
@@ -97,6 +98,7 @@ function save() {
 /* ---------- odvodené dáta ---------------------------------------- */
 const st = (id) => state.topics[id];
 const titleOf = (id) => st(id)?.title || CATALOG.get(id).title;
+const scopeOf = (id) => CATALOG.get(id)?.rozsah || '';
 const isActive = (id) => !st(id).paused;
 
 function counts(ids) {
@@ -116,6 +118,9 @@ const nList = () => TOPICS.map((t) => t.id).filter((id) => st(id).grade === 'N')
    V → úplný koniec frontu
    Č → pozícia ≈ 1/3 dĺžky frontu
    N → pozícia 5 od začiatku
+
+   V mapovacom kole sa známka uloží, ale téma sa nepreraďuje — front
+   ostáva nedotknutý a témy idú striktne podľa čísla.
 ------------------------------------------------------------------ */
 function requeue(id, grade) {
   const i = state.queue.indexOf(id);
@@ -133,7 +138,7 @@ function grade(id, g) {
   t.grade = g;
   t.last = nowISO();
   t.count = (t.count || 0) + 1;
-  requeue(id, g);
+  if (!state.settings.mapping) requeue(id, g);
   logDay(1);
   save();
 }
@@ -160,21 +165,54 @@ function pace() {
 }
 
 /* ---------- kolo --------------------------------------------------- */
-function startRound() {
+/** V mapovacom kole ide poradie striktne podľa čísla témy, inak z frontu. */
+function nextIds() {
+  const size = state.settings.roundSize;
   const ids = [];
-  for (const id of state.queue) {
-    if (isActive(id)) ids.push(id);
-    if (ids.length >= state.settings.roundSize) break;
+  if (state.settings.mapping) {
+    const all = TOPICS.map((t) => t.id).filter(isActive);
+    let start = state.mapAfter ? all.indexOf(state.mapAfter) + 1 : 0;
+    if (start <= 0 || start >= all.length) start = 0;
+    for (let i = start; i < all.length && ids.length < size; i++) ids.push(all[i]);
+    state.mapAfter = ids[ids.length - 1] || null;
+  } else {
+    for (const id of state.queue) {
+      if (isActive(id)) ids.push(id);
+      if (ids.length >= size) break;
+    }
   }
+  return ids;
+}
+
+function startRound() {
+  const ids = nextIds();
+  reveal = false; after = null;
   state.round = ids.length ? { ids, idx: 0, V: 0, C: 0, N: 0 } : null;
   save();
 }
+
+/* Po hodnotení témy, ktorá má rozsah, sa karta zastaví a rozsah ukáže —
+   pokiaľ si ho neodkryl už predtým. */
+let reveal = false;
+let after = null;
+
 function answer(g) {
   const r = state.round;
-  if (!r || r.idx >= r.ids.length) return;
-  grade(r.ids[r.idx], g);
+  if (!r || after || r.idx >= r.ids.length) return;
+  const id = r.ids[r.idx];
+  grade(id, g);
   r[g]++;
+  if (scopeOf(id) && !reveal) { after = { id, g }; save(); return render(); }
   r.idx++;
+  reveal = false;
+  save();
+  advanceCard();
+}
+
+function nextCard() {
+  if (!state.round) return;
+  after = null; reveal = false;
+  state.round.idx++;
   save();
   advanceCard();
 }
@@ -230,39 +268,57 @@ function viewRound() {
   if (!r) return roundIntro();
   if (r.idx >= r.ids.length) return roundSummary(r);
 
-  const id = r.ids[r.idx];
+  const id = after ? after.id : r.ids[r.idx];
   const t = CATALOG.get(id);
   const s = SUBJ.get(t.subject);
   const parts = titleOf(id).split(' · ');
+  const scope = scopeOf(id);
+  const showScope = !!scope && (reveal || !!after);
 
   return `
-    <div class="timer" aria-hidden="true"><div id="timerbar" class="timer__bar"></div></div>
+    <div class="timer" aria-hidden="true">${after ? '' : '<div id="timerbar" class="timer__bar"></div>'}</div>
     <div class="round">
       <div class="round__meta">
-        <span>${r.idx + 1} / ${r.ids.length}</span>
+        <span>${r.idx + 1} / ${r.ids.length}${modeTag()}</span>
         <span>${esc(s.short)}${t.tc ? ' · ' + esc(t.tc) : ''}</span>
       </div>
       <div class="card" id="card">
         <div class="card__num">${esc(s.short)} ${t.num}</div>
         <h1 class="card__title">${parts.map((p) => `<span>${esc(p)}</span>`).join('')}</h1>
+        ${showScope ? `<div class="scope">${esc(scope)}</div>` : ''}
       </div>
-      <div class="answers">
-        ${['V', 'C', 'N'].map((g) => `
-          <button class="ans ans--${g}" data-answer="${g}">
-            <span class="ans__glyph" aria-hidden="true">${GLYPH[g]}</span>
-            <span class="ans__label">${GRADES[g]}</span>
-          </button>`).join('')}
-      </div>
+      ${after ? `
+        <div class="graded">
+          <span class="graded__mark graded__mark--${after.g}" aria-hidden="true">${GLYPH[after.g]}</span>
+          <span>${GRADES[after.g]}</span>
+        </div>
+        <div class="answers"><button class="primary primary--flush" data-act="next">Ďalej</button></div>
+      ` : `
+        ${scope && !reveal ? '<button class="reveal" data-act="reveal">Ukázať rozsah</button>' : ''}
+        <div class="answers">
+          ${['V', 'C', 'N'].map((g) => `
+            <button class="ans ans--${g}" data-answer="${g}">
+              <span class="ans__glyph" aria-hidden="true">${GLYPH[g]}</span>
+              <span class="ans__label">${GRADES[g]}</span>
+            </button>`).join('')}
+        </div>
+      `}
     </div>`;
 }
 
+/** Nenápadný štítok režimu. */
+const modeTag = () => state.settings.mapping ? ' <i class="modetag">mapovanie</i>' : '';
+
 function roundIntro() {
   const active = idsOf((t) => isActive(t.id));
-  const next = state.queue.filter(isActive).slice(0, state.settings.roundSize);
+  const next = state.settings.mapping
+    ? (() => { const keep = state.mapAfter; const r = nextIds(); state.mapAfter = keep; return r; })()
+    : state.queue.filter(isActive).slice(0, state.settings.roundSize);
   return `
     <div class="pad">
-      <h1 class="h1">Dnešné kolo</h1>
-      <p class="lede">${state.settings.roundSize} ${plural(state.settings.roundSize, 'téma', 'témy', 'tém')} z frontu.
+      <h1 class="h1">Dnešné kolo${modeTag()}</h1>
+      <p class="lede">${state.settings.roundSize} ${plural(state.settings.roundSize, 'téma', 'témy', 'tém')}
+        ${state.settings.mapping ? 'v poradí podľa čísla — front sa nepreraďuje.' : 'z frontu.'}
         V rade stojí ${active.length} aktívnych tém.</p>
       <button class="primary" data-act="start">Začať kolo</button>
       <div class="rowlabel">Na rade</div>
@@ -301,7 +357,7 @@ function roundSummary(r) {
 
 function afterRound() {
   const r = state.round;
-  if (r && r.idx < r.ids.length) resetTimer(true);
+  if (r && !after && r.idx < r.ids.length) resetTimer(true);
 }
 
 function advanceCard() {
@@ -467,6 +523,7 @@ function openSheet(id) {
       <div class="sheet__meta">${esc(SUBJ.get(t.subject).name)} · téma ${t.num}${t.tc ? ' · ' + esc(t.tc) : ''}</div>
       <input class="sheet__title" id="s-title" value="${esc(titleOf(id))}" aria-label="Názov témy">
       <input class="sheet__note" id="s-note" value="${esc(s.note)}" placeholder="Poznámka, jeden riadok" aria-label="Poznámka">
+      ${scopeOf(id) ? `<div class="sheet__scope"><b>Rozsah</b>${esc(scopeOf(id))}</div>` : ''}
       <div class="answers answers--sm">
         ${['V', 'C', 'N'].map((g) => `
           <button class="ans ans--${g}${s.grade === g ? ' is-on' : ''}" data-sheet-grade="${g}">
@@ -539,6 +596,8 @@ function viewSystem() {
         </div>
       </div>
       <label class="toggle"><input type="checkbox" data-act="timer" ${state.settings.timer ? 'checked' : ''}><span>Časovač 90 sekúnd</span></label>
+      <label class="toggle"><input type="checkbox" data-act="mapping" ${state.settings.mapping ? 'checked' : ''}><span>Mapovacie kolo</span></label>
+      <p class="muted small">Známky sa ukladajú, ale téma sa nepreraďuje — front ide striktne podľa čísla. Na zmapovanie, čo vieš, pred prvým ostrým kolom.</p>
 
       <div class="rowlabel">Dáta</div>
       <div class="btnrow">
@@ -655,6 +714,12 @@ document.addEventListener('click', (e) => {
       save(); render(); break;
     case 'timer':
       state.settings.timer = !state.settings.timer; save(); break;
+    case 'mapping':
+      state.settings.mapping = !state.settings.mapping;
+      state.round = null; after = null; reveal = false;
+      save(); render(); break;
+    case 'reveal': reveal = true; render(); break;
+    case 'next': nextCard(); break;
     case 'export': doExport(); break;
     case 'import': $('#file').click(); break;
     case 'copy':
@@ -695,10 +760,15 @@ document.addEventListener('input', (e) => {
 document.addEventListener('keydown', (e) => {
   if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
   if (route() !== 'dnes' || !state.round) return;
+  if (after) {
+    if ([' ', 'Enter', 'ArrowRight'].includes(e.key)) { e.preventDefault(); nextCard(); }
+    return;
+  }
   if (e.key === '1') { e.preventDefault(); answer('V'); }
   else if (e.key === '2') { e.preventDefault(); answer('C'); }
   else if (e.key === '3') { e.preventDefault(); answer('N'); }
   else if (e.key === ' ') { e.preventDefault(); toggleTimer(); }
+  else if (e.key === 'r' && scopeOf(state.round.ids[state.round.idx])) { e.preventDefault(); reveal = true; render(); }
 });
 
 document.addEventListener('animationend', (e) => {

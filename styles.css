@@ -315,3 +315,46 @@ code { font-family: var(--mono); font-size: .9em; }
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r); padding: 16px; overflow-x: auto; margin: 12px 0;
 }
+
+/* ---------- rozsah témy (autori a diela) ----------------------------- */
+.scope {
+  margin-top: 22px; padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 14.5px; line-height: 1.55; color: var(--ink-soft);
+  animation: in .19s ease both;
+}
+.reveal {
+  align-self: flex-start; margin-bottom: 14px; padding: 7px 0;
+  font-size: 13px; color: var(--ink-faint);
+  border-bottom: 1px solid var(--line);
+}
+.reveal:active { color: var(--ink); }
+
+.graded {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  font-size: 13px; color: var(--ink-faint);
+}
+.graded__mark--V { color: var(--v); }
+.graded__mark--C { color: var(--c); }
+.graded__mark--N { color: var(--n); }
+.primary--flush { margin: 0; }
+
+.modetag {
+  font-style: normal; margin-left: 8px; padding: 2px 7px;
+  border: 1px solid var(--line); border-radius: 999px;
+  font-size: 11px; letter-spacing: .04em; color: var(--ink-faint);
+  vertical-align: middle;
+}
+.h1 .modetag { font-size: 12px; vertical-align: 4px; }
+
+.sheet__scope {
+  margin: 4px 0 12px; padding: 13px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  font-size: 14px; line-height: 1.55; color: var(--ink-soft);
+}
+.sheet__scope b {
+  display: block; margin-bottom: 5px; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) { .scope { animation: none; } }

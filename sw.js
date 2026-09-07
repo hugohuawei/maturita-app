@@ -1,5 +1,5 @@
 /* Offline shell. Pri zmene súborov zvýš verziu. */
-const V = 'maturita-v1';
+const V = 'maturita-v2';
 const ASSETS = [
   './', './index.html', './styles.css',
   './js/catalog.js', './js/app.js',

@@ -5,9 +5,9 @@ bez prihlasovania, bez externých volaní. Stav v `localStorage`.
 
 ## Obrazovky
 
-- **Dnes** — jedna karta, jedna téma. `1` = Viem · `2` = Čiastočne · `3` = Neviem · `medzerník` = časovač
+- **Dnes** — jedna karta, jedna téma. `1` = Viem · `2` = Čiastočne · `3` = Neviem · `medzerník` = časovač · `r` = ukázať rozsah
 - **Prehľad** — rozdelenie po predmetoch a bio celkoch, tempo, odhad dĺžky kola, graf V-tém
-- **Témy** — všetkých 170, filter podľa predmetu a známky, ručné hodnotenie, pozastavenie, poznámka, premenovanie
+- **Témy** — všetkých 170, filter podľa predmetu a známky, ručné hodnotenie, pozastavenie, poznámka, premenovanie, rozsah témy
 - **N** — pracovný zoznam na štvrtok, zoradený podľa toho, ako dlho je téma v N
 - **Systém** — rozvrh, protokoly, šablóna, fázy roka + nastavenia a export/import
 
@@ -23,6 +23,24 @@ Jeden front. Po ohodnotení sa téma vráti do frontu:
 
 Nehodnotené témy stoja na začiatku. Pozastavené sa v kole preskakujú, ale
 z frontu nevypadnú.
+
+### Mapovacie kolo
+
+Prepínač v Systéme → Kolo. Keď je zapnutý, známky sa ukladajú, ale téma sa
+**nepreraďuje** — front ostáva nedotknutý a témy idú striktne v poradí podľa
+čísla, kolo za kolom. Slúži na prvé zmapovanie, čo vieš. Na obrazovke Dnes to
+označuje štítok `mapovanie`. Po vypnutí platí normálny algoritmus.
+
+## Rozsah témy
+
+SJL témy nesú pole `rozsah` — autorov a diela. Na karte pri retrievale sa
+**nezobrazuje**, aby si si nedával nápovedu. Uvidíš ho:
+
+- po ohodnotení V/Č/N (karta sa zastaví a ukáže ho, potom „Ďalej")
+- keď sám klikneš na nenápadné **„Ukázať rozsah"** pod kartou (klávesa `r`)
+- vždy v detaile témy na obrazovke Témy
+
+Ak si rozsah odkryl sám, karta sa po hodnotení nezastavuje.
 
 ## Katalóg
 
