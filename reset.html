@@ -36,7 +36,7 @@
   <h1>Obnova appky</h1>
   <p>Vyčistí uloženú verziu a stiahne najnovšiu. Tvoj postup — známky, poznámky a front — zostáva nedotknutý.</p>
   <div id="stav">Pracujem…</div>
-  <a class="btn" href="./index.html#/dnes">Otvoriť appku</a>
+  <a class="btn" href="./index.html#/dnes" id="otvorit">Otvoriť appku</a>
   <p class="muted">Ak si appku pridal na plochu, po tomto ju zavri cez prepínač aplikácií a otvor znova.</p>
 </main>
 <script>
@@ -54,10 +54,16 @@
     say(keys.length ? `Vymazaná cache: ${keys.join(', ')}` : 'Cache bola prázdna');
   } catch { say('Cache sa nepodarilo vymazať'); }
   try {
+    const files = ['index.html','styles.css','js/catalog.js','js/app.js','sw.js','manifest.webmanifest'];
+    await Promise.all(files.map((u) => fetch(u + '?t=' + Date.now(), { cache: 'reload' }).catch(() => {})));
+    say('Stiahnutá najnovšia verzia');
+  } catch { say('Nové súbory sa nepodarilo stiahnuť — skús to online'); }
+  try {
     const raw = localStorage.getItem('maturita.v1');
     const n = raw ? Object.keys(JSON.parse(raw).topics || {}).length : 0;
     say(n ? `Postup zachovaný: ${n} tém` : 'Uložený postup: zatiaľ žiadny');
   } catch { say('Postup: nedá sa prečítať'); }
+  document.getElementById('otvorit').href = './index.html?t=' + Date.now() + '#/dnes';
   say('Hotovo — klikni na Otvoriť appku.');
 })();
 </script>

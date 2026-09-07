@@ -4,7 +4,7 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v4';
+const BUILD = 'v5';
 const BUILD_DATE = '7. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;

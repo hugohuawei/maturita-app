@@ -6,7 +6,7 @@
    neprepíše — presne to sa raz stalo.
 
    Pri zmene súborov zvýš V aj BUILD v js/app.js. */
-const V = 'maturita-v4';
+const V = 'maturita-v5';
 const NET_TIMEOUT = 3000;
 const ASSETS = [
   './', './index.html', './styles.css',
@@ -29,7 +29,10 @@ self.addEventListener('activate', (e) => {
 function fromNetwork(req) {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), NET_TIMEOUT);
-    fetch(req).then(
+    // 'no-cache' = vždy sa spýtaj servera (ETag), ale prijmi 304.
+    // Bez toho by HTTP cache prehliadača servírovala staré súbory —
+    // GitHub Pages posiela max-age=600.
+    fetch(new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' })).then(
       (res) => { clearTimeout(t); resolve(res); },
       (err) => { clearTimeout(t); reject(err); });
   });
