@@ -4,6 +4,8 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
+const BUILD = 'v3';
+const BUILD_DATE = '7. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
 
@@ -658,6 +660,11 @@ Ako to funguje:   3–4 vety príčinnej reťaze
       </ul>
 
       <button class="ghost danger" data-act="reset">Vymazať všetok postup</button>
+
+      <div class="build">
+        <span>Verzia <b>${BUILD}</b> · ${BUILD_DATE}</span>
+        <button data-act="update">Skontrolovať aktualizáciu</button>
+      </div>
     </div>`;
 }
 
@@ -731,6 +738,7 @@ document.addEventListener('click', (e) => {
       if (text) applyImport(text);
       break;
     }
+    case 'update': forceUpdate(); break;
     case 'reset':
       if (confirm('Vymazať všetky známky, poznámky a front?')) {
         state = reconcile(freshState()); save(); render();
@@ -774,6 +782,18 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('animationend', (e) => {
   if (e.target.id === 'timerbar') { timer.done = true; timer.running = false; e.target.classList.add('done'); }
 });
+
+/* ---------- aktualizácia -------------------------------------------
+   Zmaže cache service workera a načíta appku odznova. localStorage
+   (známky, front, poznámky) sa nedotýka — postup zostáva. */
+async function forceUpdate() {
+  try {
+    for (const k of await caches.keys()) await caches.delete(k);
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (reg) await reg.update();
+  } catch (e) { /* offline alebo bez service workera — reload aj tak skúsime */ }
+  location.reload();
+}
 
 /* ---------- štart --------------------------------------------------- */
 logDay(0);

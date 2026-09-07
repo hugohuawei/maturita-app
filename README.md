@@ -49,6 +49,17 @@ tabuľky — pri načítaní sa spáruje podľa `id` a vloží na začiatok fron
 existujúci postup zostane. Témy `Doplniť` (OBN 11+, ANJ 1–30) sú založené ako
 pozastavené; premenovať ich vieš aj priamo v appke (Témy → klik na tému).
 
+## Verzia a aktualizácia
+
+Systém → dole je riadok `Verzia vN · dátum`. To je verzia kódu, ktorý práve
+beží — ak sedí s poslednou nasadenou, máš aktuálnu appku.
+
+Vedľa je **Skontrolovať aktualizáciu**: zmaže cache service workera a načíta
+appku odznova. Postup v `localStorage` sa nedotýka.
+
+Pri každom nasadení zvýš **obe** miesta naraz: `BUILD` v `js/app.js`
+a `V` v `sw.js`. Bez toho si prehliadač nechá starú verziu v cache.
+
 ## Prenos medzi zariadeniami
 
 Systém → Dáta → **Exportovať JSON** / **Importovať JSON**, prípadne cez schránku.
