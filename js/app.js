@@ -4,7 +4,7 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v8';
+const BUILD = 'v9';
 const BUILD_DATE = '14. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
@@ -770,13 +770,12 @@ function viewSystem() {
       </ol>
       <p class="small">Neučím sa tu. Keď na tému neviem odpovedať, <b>je to výsledok merania, nie problém na riešenie</b> — riešim ho vo štvrtok. Ak si stranu prečítam, musím ju hneď zavrieť a skúsiť ju povedať spamäti; samotné prečítanie je takmer bezcenné.</p>
 
-      <div class="rowlabel">Utorok ráno — angličtina, písomná časť (30 min)</div>
-      <p class="small">Strieda sa dvojtýždenne:</p>
+      <div class="rowlabel">Angličtina mimo hodín — ~75 min týždenne</div>
+      <p class="small">Hodiny sú dobré, netreba dopĺňať. Mimo nich:</p>
       <ul class="phases">
-        <li><b>Test</b> — jeden diel externej časti z ročníkovej sady (posledných 15 rokov), časovaný, bez slovníka, kontrola podľa kľúča → chyby do chybníka ANJ</li>
-        <li><b>Drill</b> — cielené precvičenie javu, ktorý sa v chybníku ANJ opakuje najčastejšie</li>
+        <li><b>Utorok ráno, 30'</b> — KAJ: T1–T3 a roleplaye</li>
+        <li><b>Streda, voľná hodina, 45'</b> — cvičenia z Yes B2</li>
       </ul>
-      <p class="muted small">Chybník rozhoduje, čo je v drill týždňoch. Neplánujem to dopredu.</p>
 
       <div class="rowlabel">Štvrtok, 90 minút</div>
       <p class="small"><b>Prvých 20 min — vždy, bez výnimky:</b> N-zoznam. Nie rýchly recall ako ráno, ale poriadne rozobratie — prečo to neviem, čo presne mi chýba. Tu sa smie dopĺňať obsah, ráno nie.</p>
@@ -790,7 +789,7 @@ function viewSystem() {
           <tr><th>4.</th><td>Dobiehanie — voľná kapacita</td></tr>
         </tbody>
       </table></div>
-      <p class="muted small">Angličtina sem nepatrí, má vlastný utorkový slot.</p>
+      <p class="muted small">Angličtina sem nepatrí, má vlastné sloty v utorok ráno a v stredu.</p>
 
       <div class="rowlabel">Chybník</div>
       <p class="small">Samostatná poznámka na predmet (<code>Chybník SJL</code>, <code>Chybník ANJ</code>) v Notability. Po každej písomke, slohu alebo teste doň idú <b>2–3 konkrétne chyby</b>, každá ako jeden riadok. Nie teória — moje vlastné chyby.</p>
@@ -800,19 +799,20 @@ function viewSystem() {
       </ul>
       <p class="small"><b>V marci prechádzam chybník namiesto učenia nového.</b> Do januára by mal mať 15–20 riadkov.</p>
 
-      <div class="rowlabel">Protokol samoštúdia OBN — 40 min = 1 téma</div>
-      <p class="small">Robím na hodine, potichu, z učiteľových .docx.</p>
+      <div class="rowlabel">Protokol samoštúdia OBN — 1 téma = 2 hodiny</div>
+      <p class="small">Robím na hodine, potichu, z učiteľových .docx. Tempo 3 témy týždenne — 50 tém hotových do polovice januára.</p>
       <ol class="steps">
-        <li><b>5 min</b> — prečítam len nadpisy, zavriem, napíšem spamäti čo viem <span class="muted">(na voľný papier, nie do finálnej poznámky)</span></li>
-        <li><b>20 min</b> — čítam .docx, dopĺňam a opravujem do toho, čo som napísal</li>
-        <li><b>10 min</b> — otvorím duplikovanú šablónu a napíšem záchytný bod: 5–7 odrážok vlastnými slovami, bez pozerania</li>
-        <li><b>5 min</b> — kontrola proti .docx, doplním, zapíšem dátum a V/Č/N</li>
+        <li>Prečítam len nadpisy, zavriem, napíšem spamäti čo viem <span class="muted">(na voľný papier, nie do finálnej poznámky)</span></li>
+        <li>Čítam .docx, dopĺňam a opravujem do toho, čo som napísal</li>
+        <li>Otvorím duplikovanú šablónu a napíšem záchytný bod: 5–7 odrážok vlastnými slovami, bez pozerania</li>
+        <li>Kontrola proti .docx, doplním, zapíšem dátum a V/Č/N</li>
       </ol>
+      <p class="small">Ak tému vôbec nepoznám, najprv si ju prečítam a až potom píšem spamäti — vybaviť sa nedá to, čo som nikdy nevidel.</p>
       <p class="muted small">Poradie: ekonómia 1–21 a 26 (súvislá línia), potom 22–25 a 27–28, potom politológia a právo.</p>
 
       <div class="rowlabel">Bio poznámky</div>
-      <p class="small">Dva zošity. <b>„BIO-PR surové“</b> a <b>„BIO-KU surové“</b> — píšem počas hodiny, chronologicky, jedna strana na hodinu, len kostra, schémy a <code>!</code> pri všetkom, čo učiteľka zdôrazní. Nikdy sa neupratujú.</p>
-      <p class="small"><b>„BIO 01“–„BIO 61“</b> — jedna strana na tému, píšem poobede prenosom zo surového. Šablóna:</p>
+      <p class="small">Dva zošity. <b>„BIO-PR surové“</b> a <b>„BIO-KU surové“</b> — počas hodiny píšem len to, čo nebude v prezentácii: dôrazy učiteľky, „toto býva na teste“, vysvetlenia navyše, vlastné otázky. <code>!</code> pri všetkom, čo učiteľka zdôrazní. Nikdy sa neupratujú.</p>
+      <p class="small"><b>„BIO 01“–„BIO 61“</b> — jedna strana na tému, vzniká doma z prezentácie plus mojich značiek zo surového. Slajdy nikdy neprepisujem. Šablóna:</p>
       <pre class="tpl">[číslo] — [názov témy]                    (TC: [tematický celok])
 
 Čo sa ma môžu spýtať:  3 otázky      ← navrchu strany zámerne
@@ -826,7 +826,7 @@ Ako to funguje:  3–4 vety príčinnej reťaze</pre>
         <li><b>Sep–Dec</b> — OBN sa celá odbaví na hodinách. Bio zachytávanie beží. Ranné kolo cez SJL. Jeden sloh a jeden test mesačne.</li>
         <li><b>Jan–Feb</b> — odpadá nemčina a KNJ, uvoľnia sa 4 hodiny týždenne. Slohový šprint: jeden sloh týždenne, test každé dva týždne. Štvrtková rotácia prirodzene skolabuje na sloh/test striedavo.</li>
         <li><b>Marec</b> — týždeň pred písomkami plná simulácia v reálnom čase. Nič nové, len chybník.</li>
-        <li><b>Mar–Jún</b> — čistý retrieval, kolo sa zrýchľuje, N-témy dostávajú štvrtkové bloky. Utorkový slot sa uvoľní pre ústnu angličtinu.</li>
+        <li><b>Mar–Jún</b> — čistý retrieval, kolo sa zrýchľuje, N-témy dostávajú štvrtkové bloky.</li>
       </ul>
 
       <div class="rowlabel">Termíny</div>
