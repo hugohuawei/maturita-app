@@ -404,3 +404,12 @@ code { font-family: var(--mono); font-size: .9em; }
 
 .grp--empty { opacity: .55; }
 .grp--empty .bar { background: var(--line-soft); }
+
+/* ---------- štítky: vetva biológie, možná duplicita ------------------- */
+.tag {
+  display: inline-block; margin-right: 6px; padding: 0 6px;
+  border: 1px solid var(--line); border-radius: 999px;
+  font-size: 11px; line-height: 17px; color: var(--ink-faint); white-space: nowrap;
+}
+.tag--dup { color: var(--c); border-color: color-mix(in srgb, var(--c) 40%, var(--line)); }
+.sheet__tags { margin-top: 6px; }

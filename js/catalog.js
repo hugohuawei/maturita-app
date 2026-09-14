@@ -14,84 +14,91 @@ const SUBJECTS = [
   { key: 'sjl',     name: 'Slovenský jazyk a literatúra', short: 'SJL' },
   { key: 'obn-pol', name: 'Občianska — politológia a právo', short: 'OBN-POL' },
   { key: 'obn-eko', name: 'Občianska — ekonómia a spoločnosť', short: 'OBN-EKO' },
-  { key: 'obn-fil', name: 'Občianska — filozofia a psychológia', short: 'OBN-FIL' },
+  { key: 'obn-fil', name: 'Občianska — filozofia a religionistika', short: 'OBN-FIL' },
+  { key: 'obn-psy', name: 'Občianska — psychológia', short: 'OBN-PSY' },
+  { key: 'obn-soc', name: 'Občianska — sociológia', short: 'OBN-SOC' },
   { key: 'bio',     name: 'Biológia', short: 'BIO' },
   { key: 'anj',     name: 'Angličtina', short: 'ANJ' },
 ];
 
-/* Oblasti naprieč občianskou — v jednom maturitnom zadaní sa miešajú, tak
-   ich treba vidieť samostatne, nie len po vetvách. */
+const PLACEHOLDER = 'Doplniť';
+
+/* Oblasti naprieč občianskou — maturitné zadanie má 3 úlohy zo šiestich
+   oblastí. `share` = podiel z 87 maturitných úloh. Právo a politológia
+   sú zatiaľ spolu (15 + 10 úloh), kým nie je dané, ktorá téma kam patrí.
+   Inštitúcie nemajú v rozdelení úloh vlastný riadok. */
 const AREAS = [
-  'ekonómia',
-  'právo a politológia',
-  'sociológia a náboženstvá',
-  'inštitúcie',
-  'filozofia a psychológia',
+  { name: 'filozofia a religionistika', share: 38 },
+  { name: 'ekonómia',                   share: 24 },
+  { name: 'právo a politológia',        share: 28 },
+  { name: 'psychológia',                share: 6 },
+  { name: 'sociológia',                 share: 3 },
+  { name: 'inštitúcie',                 share: null },
 ];
 
 /* --- Slovenský jazyk a literatúra (30) ---------------------------
    [názov, rozsah]. `rozsah` = autori a diela k téme. Na karte pri
    retrievale sa NEZOBRAZUJE, kým ho sám neodkryješ alebo neohodnotíš. */
 const SJL = [
-  ['Slohové postupy · Sylabický veršový systém',
+  ['Slohové postupy. Sylabický veršový systém',
    'Samo Chalupka (Mor ho!) · Ján Botto (Smrť Jánošíkova) · Hugolín Gavlovič (Valaská škola mravúv stodola)'],
-  ['Štýlotvorné činitele · Krátka epická próza — poviedka, novela',
+  ['Štýlotvorné činitele. Krátka epická próza',
    'Martin Kukučín / Matej Bencúr (Neprebudený, Rysavá jalovica, Keď báčik z Chochoľova umrie — Aduš Domanický) · Jozef Gregor Tajovský (Maco Mlieč) · Božena Slančíková-Timrava'],
-  ['Jazykové štýly · Sylabicko-tonický veršový systém',
+  ['Jazykové štýly. Sylabicko-tonický veršový systém',
    'Pavol Országh Hviezdoslav · Janko Jesenský · Jozef Miloslav Hurban'],
-  ['Slovné druhy · Epická poézia',
+  ['Slovné druhy. Epická poézia',
    'Janko Kráľ (Zakliata panna vo Váhu a divný Janko) · Andrej Sládkovič (Detvan — Martin, Elena, Matej Korvín)'],
-  ['Slovesá · Veľká epická próza — román',
+  ['Slovesá. Veľká epická próza — román',
    'Martin Kukučín (Dom v stráni — Šora Anzula, Mate Berac, Katica, Niko Dubčić) · A. S. Puškin (Kapitánova dcéra — Piotr Griňov) · Cervantes (Don Quijote) · Jozef Ignác Bajza (René mládenca príhody a skúsenosti) · Homér (Ilias, Odysea) · Victor Hugo (Chrám Matky Božej v Paríži) · Goethe (Utrpenie mladého Werthera)'],
-  ['Prídavné mená · Lyrická poézia — štylizácia',
+  ['Prídavné mená, zámená a číslovky. Lyrická poézia — štylizácia',
    'Francesco Petrarca (Sonety Laure) · Ján Botto · Vladimír Roy'],
-  ['Viacslovné pomenovania · Dramatická literatúra',
+  ['Viacslovné pomenovania. Dramatická literatúra — všeobecné otázky',
    'William Shakespeare (Hamlet — Claudius) · Jozef Gregor Tajovský (Statky-zmätky — Ďurko Palčík, Zuzka Kamenská, Tomáš Kamenský, Ondrej Palčík) · Cervantes (Don Quijote)'],
-  ['Zvukové javy reči · Časomerný veršový systém',
+  ['Zvukové javy reči. Lyrická a epická poézia — časomerný veršový systém',
    'Ján Hollý (Svätopluk; „slovenský Homér“, Vergílius) · Ján Kollár (Slávy dcera — Friderika Schmidtová)'],
-  ['Jednoduchá veta · Vnútorný monológ, novela',
+  ['Jednoduchá veta. Vnútorný monológ',
    'Alfonz Bednár (Kolíska — Jašek Kutliak) · Milo Urban · Janko Jesenský · Jozef Gregor Tajovský'],
-  ['Slovanské jazyky, vznik a vývin slovenčiny · Druhy lyriky',
+  ['Slovanské jazyky, vznik a vývin slovenského jazyka. Druhy lyriky',
    'Andrej Sládkovič · Ivan Krasko · Ján Botto · S. A. Jesenin · Jozef Miloslav Hurban · Kralická Biblia'],
-  ['Obohacovanie slovnej zásoby · Komédia',
+  ['Obohacovanie slovnej zásoby. Komédia',
    'Ján Chalupka (Kocúrkovo) · Ján Palárik (Zmierenie — Eržika Hrabovská; Inkognito, Drotár) · Július Barč-Ivan (Mastný hrniec) · N. V. Gogoľ (Revízor) · Plautus'],
-  ['Lexikografia · Sociálny román',
+  ['Lexikografia — druhy slovníkov. Sociálny román',
    'Milo Urban (Živý bič — Adam Hlavaj, Eva Hlavajová, Ondrej Koreň, notár Okolický) · Martin Kukučín (Dom v stráni)'],
-  ['Vetné členy · Psychologický román',
+  ['Vetné členy. Psychologický román',
    'Jozef Cíger Hronský (Jozef Mak) · Erich Maria Remarque (Na západe nič nové — Paul Bäumer, Kantorka) · F. M. Dostojevskij · J. D. Salinger (Holden Caulfield)'],
-  ['Umelecký a odborný štýl · Voľný verš',
+  ['Umelecký a odborný štýl. Voľný verš, reflexívna a duchovná lyrika',
    'Walt Whitman · Rudolf Dilong · Laco Novomeský · Ján Smrek / Ján Čietek · Emil Boleslav Lukáč'],
-  ['Spôsoby spracovania textu · Reťazový kompozičný postup',
+  ['Spôsoby spracovania textu. Reťazový kompozičný postup',
    'Margita Figuli (Tri gaštanové kone — Peter, Magdaléna, Jano Zápotočný) · Dobroslav Chrobák (Drak sa vracia — Šimon Jariabek) · František Švantner (Nevesta hôľ) · Ľudo Ondrejov (Jerguš Lapin)'],
-  ['Charakteristika · Tragédia',
+  ['Charakteristika. Tragédia',
    'Sofokles (Kráľ Oidipus — Kreón, Teiresias) · Ivan Stodola · Ivan Bukovčan · Victor Hugo (Chrám Matky Božej) · Honoré de Balzac (Otec Goriot) · Shakespeare'],
-  ['Zvuková stránka reči · Čistá lyrika',
+  ['Zvukové jazykové prostriedky. Literárna moderna — symbolizmus, senzualizmus, čistá lyrika',
    'Ivan Krasko · Ján Kostra (Ave Eva) · Paul Verlaine · Samo Bohdan Hroboň · Ján Botto'],
-  ['Súvetia · Prúd vedomia, experiment, literatúra absurdity',
+  ['Súvetia. Prúd vedomia a absurdita v próze 20. storočia',
    'James Joyce (Odyseus — Leopold Bloom) · Franz Kafka (Premena — Gregor Samsa; Max Brod) · Ján Johanides (Pisár Gráč — Jozef Gráč, Alojz Greškovič)'],
-  ['Slovná zásoba · Lyrická poézia — automatický text',
+  ['Slovná zásoba. Lyrická poézia — automatický text, expresionizmus',
    'Rudolf Fábry (Uťaté ruky) · Guillaume Apollinaire (Pásmo) · André Breton · Tristan Tzara · Vítězslav Nezval'],
-  ['Formy logického myslenia · Absurdná dráma',
+  ['Formy logického myslenia. Dramatická literatúra — absurdná dráma',
    'Samuel Beckett (Čakanie na Godota) · Václav Havel · Milan Lasica a Július Satinský · Stano Štepka (Radošinské naivné divadlo)'],
-  ['Formy národného jazyka · Retrospektívny kompozičný postup',
+  ['Formy národného jazyka. Retrospektívny kompozičný postup',
    'Alfonz Bednár · Ladislav Mňačko (Ako chutí moc) · J. D. Salinger (Kto chytá v žite — Holden Caulfield) · Ján Kačala'],
-  ['Komunikácia · Súčasná lyrická poézia',
+  ['Komunikácia. Súčasná lyrická poézia',
    'Milan Rúfus (Zvony) · Miroslav Válek (Dotyky, Skaza Titanicu)'],
-  ['Výklad a úvaha · Postmoderna v epickej próze',
+  ['Výklad a úvaha. Postmoderna v epickej próze',
    'Umberto Eco (Meno ruže — Adso z Melku) · Milan Kundera (Žert — Ludvík Jahn, Pavel Zemánek) · Dominik Tatarka'],
-  ['Publicistický štýl · Zobrazenie absurdity totalitného režimu',
+  ['Publicistický štýl. Zobrazenie absurdity totalitného režimu v literatúre',
    'Ladislav Mňačko · Dominik Tatarka (Démon súhlasu) · Milan Kundera (Žert)'],
-  ['Administratívny štýl · Literárna moderna a umelecké avantgardy',
+  ['Administratívny štýl. Literárna moderna a umelecké avantgardy',
    'Charles Baudelaire · Guillaume Apollinaire · André Breton · Laco Novomeský · Janko Kráľ'],
-  ['Opis · Typy postáv',
+  ['Druhy opisu. Typy literárnych postáv',
    'Remarque (Paul Bäumer) · Kukučín (Aduš Domanický) · Tajovský (Maco Mlieč) · Botto (Smrť Jánošíkova) · Sládkovič (Detvan — Martin) · Salinger (Holden Caulfield)'],
-  ['Indoeurópske jazyky · Láska a jej premeny v literatúre',
+  ['Indoeurópske jazyky. Láska a jej premeny v dielach svetovej a slovenskej literatúry',
    'Jozef Cíger Hronský (Jozef Mak) · A. S. Puškin · Janko Jesenský · Martin Kukučín · Romain Rolland · Margita Figuli · Dobroslav Chrobák · Shakespeare · L. N. Tolstoj (Anna Karenina) · František Švantner (Nevesta hôľ)'],
-  ['Hovorový štýl · Konanie mladého človeka v literatúre',
+  ['Hovorový štýl. Konanie mladého človeka v literatúre v závislosti od spoločenských podmienok',
    'J. D. Salinger (Kto chytá v žite — Holden Caulfield) · Shakespeare (Hamlet) · Sofokles (Kreón)'],
-  ['Podstatné mená · Antika a jej odraz v renesancii',
+  ['Podstatné mená. Antika a jej odkaz v literárnom období humanizmu a renesancie, epos',
    'Homér (Ilias, Odysea — Achilles, Odyseus) · Vergílius (Eneas) · Sapfó · Dante Alighieri · Francesco Petrarca · Giovanni Boccaccio · François Villon · Shakespeare (Rómeo a Júlia, Kráľ Lear) · Cervantes (Don Quijote)'],
-  ['Rečnícky štýl · Stredovek a barok',
+  ['Rečnícky štýl. Staroslovienska literatúra',
    'Konštantín a Metod (Proglas, Moravsko-panónske legendy) · Kliment · Hugolín Gavlovič · literatúra Veľkej Moravy'],
 ];
 
@@ -122,8 +129,9 @@ const OBN_POL = [
 ];
 
 /* --- Občianska — ekonómia a spoločnosť (28) ---------------------
-   [názov, oblasť]. Vetva sa volá „ekonómia“, ale nie všetko v nej je
-   ekonomické — preto oblasť ako samostatný atribút. */
+   [názov, oblasť, možná duplicita s vetvou]. Vetva sa volá „ekonómia“,
+   ale nie všetko v nej je ekonomické — preto oblasť ako samostatný
+   atribút. Duplicity sa zatiaľ nemažú, len označujú. */
 const OBN_EKO = [
   ['Dejiny ekonomických teórií', 'ekonómia'],
   ['Klasická, neoklasická a marxistická ekonomická teória', 'ekonómia'],
@@ -146,16 +154,69 @@ const OBN_EKO = [
   ['Medzinárodný obchod a menová sústava', 'ekonómia'],
   ['Medzinárodná a európska integrácia', 'inštitúcie'],
   ['Orgány EÚ', 'inštitúcie'],
-  ['Sociologické pojmy', 'sociológia a náboženstvá'],
-  ['Judaizmus a islam', 'sociológia a náboženstvá'],
-  ['Kresťanstvo', 'sociológia a náboženstvá'],
-  ['Hinduizmus a budhizmus', 'sociológia a náboženstvá'],
+  ['Sociologické pojmy', 'sociológia', 'obn-soc'],
+  ['Judaizmus a islam', 'filozofia a religionistika', 'obn-fil'],
+  ['Kresťanstvo', 'filozofia a religionistika', 'obn-fil'],
+  ['Hinduizmus a budhizmus', 'filozofia a religionistika', 'obn-fil'],
   ['Družstvá, združovanie podnikov a výrobné faktory podniku', 'ekonómia'],
   ['OSN a OBSE', 'inštitúcie'],
   ['Ústava a ústavný vývoj', 'právo a politológia'],
 ];
 
-/* --- Biológia (60 v 9 tematických celkoch) ----------------------- */
+/* --- Občianska — filozofia a religionistika (33) ----------------
+   Najväčšia oblasť celej občianskej: 38 % maturitných úloh. */
+const OBN_FIL = [
+  'Filozofické disciplíny',
+  'Mýtus a filozofia, filozofia a náboženstvo',
+  'Milétska filozofická škola, arché',
+  'Herakleitos, Pytagorejci, Atomisti — „Panta Rhei“',
+  'Sofisti a Sokrates — „Viem, že nič neviem“',
+  'Platónova filozofia',
+  'Aristotelova filozofia',
+  'Helenizmus — stoici, epikurejci, novoplatonici',
+  'Patristika, Augustín Aurélius',
+  'Scholastika, Tomáš Akvinský',
+  'Renesančná filozofia — Bruno, Kuzánsky, Rotterdamský, Machiavelli',
+  'Empirizmus, F. Bacon',
+  'J. Locke — „Tabula Rasa“',
+  'Racionalizmus, R. Descartes — „metodická skepsa“',
+  'Baruch Spinoza — „Causa sui“',
+  'Osvietenstvo — Diderot, Voltaire',
+  'Immanuel Kant — „kopernikovský obrat“',
+  'G. W. F. Hegel — „Čo je rozumové, to je skutočné“',
+  'Karl Marx, filozofia dejín',
+  'Pozitivizmus',
+  'A. Schopenhauer — „Svet ako vôľa a predstava“',
+  'Fenomenológia',
+  'Martin Heidegger — bytie a existencia',
+  'S. Kierkegaard',
+  'Existencializmus, J. P. Sartre',
+  'Analytická filozofia a postpozitivizmus — Russell, Popper',
+  'Ludwig Wittgenstein — „Hranice môjho jazyka sú hranicami môjho sveta“',
+  'F. Nietzsche — „nadčlovek“',
+  'Periodizácia západnej filozofie',
+  // religionistika
+  'Monoteistické náboženstvá, judaizmus a kresťanstvo',
+  'Východné náboženstvá — hinduizmus, budhizmus',
+  'Kresťanstvo — rozdelenie, tri hlavné vetvy, koncily',
+  'Teizmus, deizmus, panteizmus, ateizmus, materializmus a idealizmus',
+];
+
+/* --- Občianska — psychológia (5) --------------------------------- */
+const OBN_PSY = [
+  'Zmyslové klamy, psychické procesy, vnemy, pocity a emócie, myšlienkové operácie',
+  'Psychologické smery — psychoanalýza, behaviorizmus, kognitívny a fenomenologický prístup',
+  'Temperament — Eysenck, Hippokrates, Jung; schopnosti ako osobnostné predpoklady',
+  'Hodnoty, normy, postoje; Maslowova pyramída; motivácia a konflikt motívov',
+  'Predmet psychológie, vznik ako vedy, disciplíny, metódy výskumu',
+];
+
+/* --- Občianska — sociológia (3) — zatiaľ bez názvov, pozastavené -- */
+const OBN_SOC_COUNT = 3;
+
+/* --- Biológia (61 v 9 tematických celkoch) -----------------------
+   Od septembra 2026: nová téma 31 (Etológia), staré 31–60 sú teraz 32–61.
+   Hodnotenia sa pri prečíslovaní presúvajú s obsahom (migrácia v app.js). */
 const BIO = [
   ['Bunka', 'Význam bunkovej teórie, objavy biológov, štruktúra eukaryotickej bunky'],
   ['Bunka', 'Typy buniek — prokaryotická, eukaryotická, rastlinná, živočíšna'],
@@ -185,8 +246,9 @@ const BIO = [
   ['Systém a fylogenéza rastlín', 'Jednoklíčnolistové a dvojklíčnolistové rastliny, čeľade magnóliorastov'],
   ['Huby a lišajníky', 'Miesto húb a lišajníkov v systéme, vreckaté a bazídiové huby'],
   ['Huby a lišajníky', 'Huby a lišajníky vo vzťahu k iným organizmom, plesne, jedlé a jedovaté huby'],
-  ['Ekológia', 'Ekológia, populácia, spoločenstvo, ekosystém, ekologická valencia'],
-  ['Ekológia', 'Kolobeh látok a tok energie, ekologické problémy'],
+  ['Ekológia / Etológia', 'Ekológia, populácia, spoločenstvo, ekosystém, ekologická valencia'],
+  ['Ekológia / Etológia', 'Kolobeh látok a tok energie, ekologické problémy'],
+  ['Ekológia / Etológia', 'Pojmy — etológia, významní predstavitelia, typy správania, etológia v praxi'],
   ['Systém živočíchov', 'Prvoky (Protozoa)'],
   ['Systém živočíchov', 'Dvojlistovce — hubky a pŕhlivce'],
   ['Systém živočíchov', 'Prvoústovce — mäkkýše'],
@@ -267,13 +329,33 @@ const TOPICS = [
     title, oblast: 'právo a politológia',
   })),
 
-  ...OBN_EKO.map(([title, oblast], i) => ({
+  ...OBN_EKO.map(([title, oblast, dup], i) => ({
     id: `obn-eko-${pad(i + 1)}`, subject: 'obn-eko', num: i + 1, title, oblast,
+    ...(dup && { dup }),
   })),
 
-  // obn-fil — vetva zatiaľ bez tém, v prehľade zostáva viditeľná
+  ...OBN_FIL.map((title, i) => ({
+    id: `obn-fil-${pad(i + 1)}`, subject: 'obn-fil', num: i + 1, title,
+    oblast: 'filozofia a religionistika', tc: i < 29 ? 'Filozofia' : 'Religionistika',
+  })),
 
-  ...BIO.map(([tc, title], i) => ({ id: `bio-${pad(i + 1)}`, subject: 'bio', num: i + 1, title, tc })),
+  ...OBN_PSY.map((title, i) => ({
+    id: `obn-psy-${pad(i + 1)}`, subject: 'obn-psy', num: i + 1, title, oblast: 'psychológia',
+  })),
+
+  ...Array.from({ length: OBN_SOC_COUNT }, (_, i) => ({
+    id: `obn-soc-${pad(i + 1)}`, subject: 'obn-soc', num: i + 1,
+    title: PLACEHOLDER, oblast: 'sociológia', paused: true,
+  })),
+
+  /* vetva: seminár 29–31 a 42–61, štvorhodinovka 1–28 a 32–41.
+     Téma 41 je sporná — zatiaľ štvorhodinovka, treba overiť. */
+  ...BIO.map(([tc, title], i) => {
+    const num = i + 1;
+    const seminar = (num >= 29 && num <= 31) || num >= 42;
+    return { id: `bio-${pad(num)}`, subject: 'bio', num, title, tc,
+             vetva: seminar ? 'seminár' : 'štvorhodinovka', ...(num === 41 && { sporna: true }) };
+  }),
 
   ...ANJ.map(([title, otazky], i) => ({
     id: `anj-${pad(i + 1)}`, subject: 'anj', num: i + 1, title, otazky,

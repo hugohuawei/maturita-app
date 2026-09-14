@@ -1,13 +1,13 @@
 # Maturita 2027
 
-Denný retrieval naprieč 165 maturitnými témami. Statická stránka, bez backendu,
+Denný retrieval naprieč 207 maturitnými témami. Statická stránka, bez backendu,
 bez prihlasovania, bez externých volaní. Stav v `localStorage`.
 
 ## Obrazovky
 
 - **Dnes** — jedna karta, jedna téma. `1` = Viem · `2` = Čiastočne · `3` = Neviem · `medzerník` = časovač · `r` = ukázať rozsah
 - **Prehľad** — rozdelenie po predmetoch a bio celkoch, tempo, odhad dĺžky kola, graf V-tém
-- **Témy** — všetkých 165, filter podľa predmetu a známky, ručné hodnotenie, pozastavenie, poznámka, premenovanie, rozsah témy
+- **Témy** — všetkých 207, filter podľa predmetu a známky, ručné hodnotenie, pozastavenie, poznámka, premenovanie, rozsah témy
 - **N** — pracovný zoznam na štvrtok, zoradený podľa toho, ako dlho je téma v N
 - **Systém** — rozvrh, protokoly, šablóna, fázy roka + nastavenia a export/import
 

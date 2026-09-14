@@ -4,8 +4,8 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v7';
-const BUILD_DATE = '7. 9. 2026';
+const BUILD = 'v8';
+const BUILD_DATE = '14. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
 
@@ -46,8 +46,10 @@ function fmtDate(iso) {
 }
 
 /* ---------- stav -------------------------------------------------- */
+const STATE_VERSION = 3;
+
 function freshState() {
-  return { version: 1, queue: [], topics: {}, round: null, history: [], mapAfter: null,
+  return { version: STATE_VERSION, queue: [], topics: {}, round: null, history: [], mapAfter: null,
            settings: { roundSize: ROUND_DEFAULT, timer: true, mapping: false } };
 }
 
@@ -65,6 +67,7 @@ function load() {
 function reconcile(s) {
   s.version ??= 1;
   s.topics ??= {};
+  migrate(s);
   s.queue ??= [];
   s.history ??= [];
   s.settings = Object.assign({ roundSize: ROUND_DEFAULT, timer: true, mapping: false }, s.settings);
@@ -86,17 +89,39 @@ function reconcile(s) {
 
   if (s.round && (!Array.isArray(s.round.ids) || !s.round.ids.every((id) => CATALOG.has(id)))) s.round = null;
 
+  return s;
+}
+
+/* Migrácie uloženého stavu. Bežia pred spárovaním s katalógom, aby sa
+   prečíslované témy nezaložili ako nové. */
+function migrate(s) {
+  const v = s.version | 0 || 1;
+
   /* v1 → v2: zástupné položky `Doplniť` boli pozastavené preto, že nemali
      názov. Teraz názvy majú, tak ich vráť do kola — ale len tie, ktoré si
      nikdy nehodnotil, aby to nezrušilo tvoje vlastné pozastavenia. */
-  if ((s.version | 0) < 2) {
+  if (v < 2) {
     for (const t of TOPICS) {
       const e = s.topics[t.id];
       if (e && e.paused && !t.paused && !e.count) e.paused = false;
     }
-    s.version = 2;
   }
-  return s;
+
+  /* v2 → v3: v biológii pribudla téma 31 (Etológia). Staré bio-31 až bio-60
+     sú teraz bio-32 až bio-61 — známky, poznámky a miesto vo fronte idú
+     s obsahom témy, nie s číslom. */
+  if (v < 3) {
+    const shift = (id) => {
+      const m = /^bio-(\d+)$/.exec(id || '');
+      return m && +m[1] >= 31 ? `bio-${pad(+m[1] + 1)}` : id;
+    };
+    s.topics = Object.fromEntries(Object.entries(s.topics).map(([id, e]) => [shift(id), e]));
+    s.queue = (s.queue || []).map(shift);
+    if (s.round && Array.isArray(s.round.ids)) s.round.ids = s.round.ids.map(shift);
+    s.mapAfter = shift(s.mapAfter);
+  }
+
+  s.version = STATE_VERSION;
 }
 
 let saveTimer = null;
@@ -113,6 +138,25 @@ const st = (id) => state.topics[id];
 const titleOf = (id) => st(id)?.title || CATALOG.get(id).title;
 const scopeOf = (id) => CATALOG.get(id)?.rozsah || '';
 const isAnj = (id) => CATALOG.get(id)?.subject === 'anj';
+
+/** SJL téma má jazykovú a literárnu časť — na karte pod sebou. */
+function titleParts(id) {
+  const t = titleOf(id);
+  if (t.includes(' · ')) return t.split(' · ');
+  if (CATALOG.get(id).subject === 'sjl') {
+    const i = t.indexOf('. ');
+    if (i > 0) return [t.slice(0, i), t.slice(i + 2)];
+  }
+  return [t];
+}
+
+/** Štítky navyše: vetva biológie, možná duplicita v občianskej. */
+function tagsOf(t) {
+  const tags = [];
+  if (t.vetva) tags.push(`<span class="tag">${esc(t.vetva)}${t.sporna ? ' · overiť' : ''}</span>`);
+  if (t.dup) tags.push(`<span class="tag tag--dup">možná duplicita s ${esc(SUBJ.get(t.dup)?.short || t.dup)}</span>`);
+  return tags.join('');
+}
 /** Otázky z katalógu, prebité tými, ktoré si dopísal v appke. */
 const questionsOf = (id) => {
   const own = st(id)?.otazky;
@@ -307,7 +351,7 @@ function viewRound() {
   const id = after ? after.id : r.ids[r.idx];
   const t = CATALOG.get(id);
   const s = SUBJ.get(t.subject);
-  const parts = titleOf(id).split(' · ');
+  const parts = titleParts(id);
   const scope = scopeOf(id);
   const showScope = !!scope && (reveal || !!after);
   const anj = isAnj(id);
@@ -447,8 +491,8 @@ function viewOverview() {
     return { name: tc, short: '', c: counts(ids), last: null };
   });
   const obnAreas = AREAS.map((a) => {
-    const ids = idsOf((t) => t.oblast === a);
-    return { name: a, short: '', c: counts(ids), last: null };
+    const ids = idsOf((t) => t.oblast === a.name);
+    return { name: a.name, share: a.share, c: counts(ids), last: null };
   });
 
   return `
@@ -477,7 +521,7 @@ function viewOverview() {
       <div class="rowlabel">Podľa predmetu</div>
       ${groups.map(barRow).join('')}
 
-      <div class="rowlabel">Občianska po oblastiach</div>
+      <div class="rowlabel">Občianska po oblastiach · podiel maturitných úloh</div>
       ${obnAreas.map(barRow).join('')}
 
       <div class="rowlabel">Biológia po tematických celkoch</div>
@@ -501,7 +545,8 @@ function barRow(g) {
     <div class="grp">
       <div class="grp__head">
         <span class="grp__name">${esc(g.name)}</span>
-        ${g.last !== null ? `<span class="grp__last">${relDay(g.last)}</span>` : ''}
+        ${g.last !== null ? `<span class="grp__last">${relDay(g.last)}</span>`
+          : g.share != null ? `<span class="grp__last">${g.share} % maturity</span>` : ''}
       </div>
       <div class="bar" role="img" aria-label="Viem ${c.V}, čiastočne ${c.C}, neviem ${c.N}, nehodnotené ${c.U}">
         ${['V', 'C', 'N'].map((k) => `<i class="bar__seg bar__seg--${k}" style="width:${pct(c[k])}%"></i>`).join('')}
@@ -576,7 +621,7 @@ function rowTopic(t) {
       <span class="row__mark row__mark--${s.grade || 'U'}" aria-hidden="true">${s.grade ? GLYPH[s.grade] : '–'}</span>
       <span class="row__body">
         <span class="row__title">${esc(titleOf(t.id))}</span>
-        <span class="row__meta">${esc(SUBJ.get(t.subject).short)} ${t.num}${t.tc ? ' · ' + esc(t.tc) : ''}
+        <span class="row__meta">${tagsOf(t)}${esc(SUBJ.get(t.subject).short)} ${t.num}${t.tc ? ' · ' + esc(t.tc) : ''}
           · ${s.count ? `${s.count}× · ${relDay(s.last)}` : 'nehodnotené'}${s.paused ? ' · pozastavená' : ''}</span>
         ${s.note ? `<span class="row__note">${esc(s.note)}</span>` : ''}
       </span>
@@ -591,7 +636,7 @@ function openSheet(id) {
   sheet.className = 'sheetwrap';
   sheet.innerHTML = `
     <div class="sheet" role="dialog" aria-modal="true">
-      <div class="sheet__meta">${esc(SUBJ.get(t.subject).name)} · téma ${t.num}${t.tc ? ' · ' + esc(t.tc) : ''}</div>
+      <div class="sheet__meta">${esc(SUBJ.get(t.subject).name)} · téma ${t.num}${t.tc ? ' · ' + esc(t.tc) : ''}${tagsOf(t) ? `<div class="sheet__tags">${tagsOf(t)}</div>` : ''}</div>
       <input class="sheet__title" id="s-title" value="${esc(titleOf(id))}" aria-label="Názov témy">
       <input class="sheet__note" id="s-note" value="${esc(s.note)}" placeholder="Poznámka, jeden riadok" aria-label="Poznámka">
       ${scopeOf(id) ? `<div class="sheet__scope"><b>Rozsah</b>${esc(scopeOf(id))}</div>` : ''}
@@ -697,14 +742,23 @@ function viewSystem() {
       <div class="scrollx"><table class="tbl">
         <thead><tr><th></th><th>Ráno 45'</th><th>V škole</th><th>Poobede</th></tr></thead>
         <tbody>
-          <tr><th>Po</th><td>15' retrieval + 30' bio</td><td>ONT 1–2 + OBN 5 → OBN samoštúdium</td><td>45' bio konsolidácia</td></tr>
-          <tr><th>Ut</th><td>15' retrieval + 30' ANJ písomka</td><td>SEB bio → surové</td><td>šport</td></tr>
-          <tr><th>St</th><td>15' retrieval + 30' bio</td><td>BIO → surové</td><td>45' bio konsolidácia</td></tr>
-          <tr><th>Št</th><td>15' retrieval + 30' sloh</td><td>ONT 1–2 → OBN samoštúdium</td><td><b>90' — rozpis nižšie</b></td></tr>
-          <tr><th>Pi</th><td>15' retrieval</td><td>BIO → surové · OBN 3 → OBN samoštúdium</td><td>voľno</td></tr>
+          <tr><th>Po</th><td>15' retrieval + 30' bio</td><td>OBN samoštúdium (ONT 1–2 + OBN 5)</td><td>voľný blok — extra work podľa potreby</td></tr>
+          <tr><th>Ut</th><td>15' retrieval + 30' KAJ: T1–T3, roleplaye</td><td>bio surové (SEB) · ANJ · KAJ</td><td>šport</td></tr>
+          <tr><th>St</th><td>15' retrieval + 30' bio</td><td>bio surové · voľná hodina → cvičenia Yes B2 · SPS</td><td>60–75' bio konsolidácia</td></tr>
+          <tr><th>Št</th><td>15' retrieval + 30' sloh</td><td>OBN samoštúdium (ONT 1–2) · SJL · ANJ dvojhodinovka</td><td><b>90' flex blok</b></td></tr>
+          <tr><th>Pi</th><td>15' retrieval</td><td>bio surové · OBN · SJL</td><td>30' bio konsolidácia</td></tr>
         </tbody>
       </table></div>
       <p class="muted small">Víkend: čítanie zo zoznamu literatúry, angličtina ako vstup (seriál bez titulkov, podcast).</p>
+
+      <div class="rowlabel">Ako pracujem na jednotlivých predmetoch</div>
+      <ul class="phases">
+        <li><b>Občianska</b> (6 h/týž, samoštúdium na hodinách) — jedna téma trvá dve hodiny, nie jednu. To je v poriadku: 3 témy týždenne, 50 tém hotových do polovice januára. Ak tému vôbec nepoznám, najprv si ju prečítam a až potom píšem spamäti — vybaviť sa nedá to, čo som nikdy nevidel.</li>
+        <li><b>SPS</b> (2 h/týž) — filozofia, psychológia, religionistika. Dve témy za dvojhodinovku, tlačené poznámky, prezentácia raz za dva mesiace. Pokrýva 47 % maturity z občianskej — ber vážne.</li>
+        <li><b>Biológia</b> — v škole píšem len to, čo nebude v prezentácii: dôrazy učiteľky, „toto býva na teste“, vysvetlenia navyše, vlastné otázky. Doma vzniká strana BIO NN z prezentácie plus mojich značiek. Slajdy nikdy neprepisujem.</li>
+        <li><b>Slovenčina</b> (4 h/týž) — rozhodujem sa na začiatku hodiny. Ak učiteľka hovorí k veci, počúvam. Ak nie: 2 hodiny gramatiky → didaktický test z externej sady pod časom, chyby do chybníka. 2 hodiny literatúry → prehlbovanie ústnych téz, doplnenie autorov a bloku „Čo sa ma môžu spýtať“.</li>
+        <li><b>Angličtina</b> — hodiny sú dobré, netreba dopĺňať. Mimo nich ~75 min týždenne: utorok ráno 30' na T1–T3 a roleplaye, streda voľná hodina 45' na cvičenia z Yes B2.</li>
+      </ul>
 
       <div class="rowlabel">Ranný retrieval — 15 min, každý deň bez výnimky</div>
       <p class="small">4–5 tém, ~3 minúty na tému:</p>
@@ -758,14 +812,14 @@ function viewSystem() {
 
       <div class="rowlabel">Bio poznámky</div>
       <p class="small">Dva zošity. <b>„BIO-PR surové“</b> a <b>„BIO-KU surové“</b> — píšem počas hodiny, chronologicky, jedna strana na hodinu, len kostra, schémy a <code>!</code> pri všetkom, čo učiteľka zdôrazní. Nikdy sa neupratujú.</p>
-      <p class="small"><b>„BIO 01“–„BIO 60“</b> — jedna strana na tému, píšem poobede prenosom zo surového. Šablóna:</p>
+      <p class="small"><b>„BIO 01“–„BIO 61“</b> — jedna strana na tému, píšem poobede prenosom zo surového. Šablóna:</p>
       <pre class="tpl">[číslo] — [názov témy]                    (TC: [tematický celok])
 
 Čo sa ma môžu spýtať:  3 otázky      ← navrchu strany zámerne
 Pojmy:      6–8 pojmov, každý jednou vetou
 Schéma:     jedna kresba
 Ako to funguje:  3–4 vety príčinnej reťaze</pre>
-      <p class="muted small">Priradenie hodiny k číslu témy robím cez tlačený index „BIO — index tém 1–60“. Keď hodina pokryje dve témy, dopĺňam obe; strana sa uzatvára až keď je téma odučená celá.</p>
+      <p class="muted small">Priradenie hodiny k číslu témy robím cez tlačený index „BIO — index tém 1–61“. Keď hodina pokryje dve témy, dopĺňam obe; strana sa uzatvára až keď je téma odučená celá.</p>
 
       <div class="rowlabel">Fázy roka</div>
       <ul class="phases">
