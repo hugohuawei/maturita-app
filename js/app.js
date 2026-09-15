@@ -4,7 +4,7 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v10';
+const BUILD = 'v11';
 const BUILD_DATE = '15. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
@@ -46,7 +46,21 @@ function fmtDate(iso) {
 }
 
 /* ---------- stav -------------------------------------------------- */
-const STATE_VERSION = 4;
+const STATE_VERSION = 5;
+
+/* Musí byť definované pred `load()` nižšie — migrácia to volá už pri štarte. */
+/* 15. 9. 2026: jednorazovo nastavené, čo chodí v kole — všetko ostatné
+   pozastavené. Neskoršie pozastavenia v appke to už neprepíše.
+   ANJ: Family, Housing, Health Care, Food, Sports, Shopping and Services,
+   Art and Culture, Communication, Jobs, Human Relationships, Banking and
+   Finances, Learning Languages. */
+const ANJ_ACTIVE = [1, 2, 3, 8, 11, 12, 14, 17, 20, 23, 26, 27];
+const FOCUS_2026_09 = (t) =>
+  t.subject === 'sjl' ||
+  (t.subject === 'obn-pol' && t.num <= 7) ||
+  (t.subject === 'obn-eko' && t.num === 1) ||
+  (t.subject === 'bio' && t.num === 1) ||
+  (t.subject === 'anj' && ANJ_ACTIVE.includes(t.num));
 
 function freshState() {
   return { version: STATE_VERSION, queue: [], topics: {}, round: null, history: [], mapAfter: null,
@@ -90,23 +104,15 @@ function reconcile(s) {
 
   if (s.round && (!Array.isArray(s.round.ids) || !s.round.ids.every((id) => CATALOG.has(id)))) s.round = null;
 
-  if (from < 4) {
-    for (const t of TOPICS) s.topics[t.id].paused = !FOCUS_2026_09(t);
+  if (from < 5) {
+    // z v4 už bol fokus nastavený — po návrate čísel ho zopakuj len pre angličtinu
+    for (const t of TOPICS) {
+      if (from < 4 || t.subject === 'anj') s.topics[t.id].paused = !FOCUS_2026_09(t);
+    }
     if (s.round && s.round.ids.some((id) => s.topics[id].paused)) s.round = null;
   }
   return s;
 }
-
-/* v3 → v4 (15. 9. 2026): jednorazovo nastavené, čo chodí v kole — všetko
-   ostatné pozastavené. Neskoršie pozastavenia v appke to už neprepíše. */
-const ANJ_ACTIVE = [15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 28, 29];
-const FOCUS_2026_09 = (t) =>
-  t.subject === 'sjl' ||
-  (t.subject === 'obn-pol' && t.num <= 7) ||
-  (t.subject === 'obn-eko' && t.num === 1) ||
-  (t.subject === 'bio' && t.num === 1) ||
-  (t.subject === 'anj' && ANJ_ACTIVE.includes(t.num));
-
 /* Migrácie uloženého stavu. Bežia pred spárovaním s katalógom, aby sa
    prečíslované témy nezaložili ako nové. */
 function migrate(s) {
@@ -136,29 +142,31 @@ function migrate(s) {
     s.mapAfter = shift(s.mapAfter);
   }
 
-  /* v3 → v4: angličtina má 30 tém v novom poradí. Témy, ktoré sa dajú
-     jednoznačne spárovať so starým zoznamom 25, si berú svoj postup so
-     sebou. Ostatné staré ANJ záznamy s nejakým postupom sa odložia do
-     `archived` (ostávajú v exporte), aby sa neprilepili na cudzie číslo. */
-  if (v < 4) {
-    const ANJ_MOVE = { 1: 15, 2: 18, 3: 22, 8: 19, 11: 17, 12: 20, 14: 16, 17: 28, 20: 24, 23: 25 };
-    const move = (id) => {
+  /* v4 → v5: verzia v10 na pár hodín prečíslovala angličtinu. Späť na
+     pôvodné čísla — postup ide s témou. Záznamy, ktoré v10 odložila do
+     `archived`, sa vracajú na svoje miesto. */
+  if (v === 4) {
+    const BACK = { 15: 1, 18: 2, 22: 3, 19: 8, 17: 11, 20: 12, 16: 14, 28: 17, 24: 20, 25: 23, 21: 26, 29: 27 };
+    const back = (id) => {
       const m = /^anj-(\d+)$/.exec(id || '');
       if (!m) return id;
-      return ANJ_MOVE[+m[1]] ? `anj-${pad(ANJ_MOVE[+m[1]])}` : null;
+      return BACK[+m[1]] ? `anj-${pad(BACK[+m[1]])}` : null;
     };
     const topics = {};
     for (const [id, e] of Object.entries(s.topics)) {
-      const to = move(id);
+      const to = back(id);
       if (to) topics[to] = e;
-      else if (e && (e.count || e.note || e.title || e.otazky?.length)) (s.archived ??= {})[id] = e;
+      else if (e && (e.count || e.note || e.title || e.otazky?.length)) (s.archived ??= {})[`v10-${id}`] = e;
+    }
+    for (const [id, e] of Object.entries(s.archived || {})) {
+      if (/^anj-\d+$/.test(id) && !topics[id]) { topics[id] = e; delete s.archived[id]; }
     }
     s.topics = topics;
-    s.queue = (s.queue || []).map(move).filter(Boolean);
+    s.queue = (s.queue || []).map(back).filter(Boolean);
     if (s.round && Array.isArray(s.round.ids)) {
-      s.round = s.round.ids.every(move) ? { ...s.round, ids: s.round.ids.map(move) } : null;
+      s.round = s.round.ids.every(back) ? { ...s.round, ids: s.round.ids.map(back) } : null;
     }
-    s.mapAfter = move(s.mapAfter);
+    s.mapAfter = back(s.mapAfter);
   }
 
   s.version = STATE_VERSION;
@@ -524,7 +532,7 @@ function viewOverview() {
   const groups = SUBJECTS.map((s) => {
     const ids = idsOf((t) => t.subject === s.key);
     const last = ids.map((id) => st(id).last).filter(Boolean).sort().pop();
-    return { name: s.name, short: s.short, c: counts(ids), last };
+    return { name: s.name, short: s.short, key: s.key, c: counts(ids), last };
   });
   const bioTc = BIO_TC.map((tc) => {
     const ids = idsOf((t) => t.tc === tc);
@@ -558,7 +566,7 @@ function viewOverview() {
         <div class="muted">Naposledy hodnotené ${relDay(lastAll)}</div>
       </div>
 
-      <div class="rowlabel">Podľa predmetu</div>
+      <div class="rowlabel">Podľa predmetu · ťukni pre zoznam tém</div>
       ${groups.map(barRow).join('')}
 
       <div class="rowlabel">Občianska po oblastiach · podiel maturitných úloh</div>
@@ -575,16 +583,18 @@ function viewOverview() {
 function barRow(g) {
   const { c } = g;
   const pct = (n) => (c.total ? (n / c.total) * 100 : 0);
+  const go = g.key ? ` data-goto="${g.key}"` : '';
+  const arrow = g.key ? '<span class="grp__arrow" aria-hidden="true">›</span>' : '';
   if (!c.total) return `
-    <div class="grp grp--empty">
-      <div class="grp__head"><span class="grp__name">${esc(g.name)}</span>
+    <div class="grp grp--empty${g.key ? ' grp--link' : ''}"${go}>
+      <div class="grp__head"><span class="grp__name">${esc(g.name)}${arrow}</span>
         <span class="grp__last">zatiaľ bez tém</span></div>
       <div class="bar"></div>
     </div>`;
   return `
-    <div class="grp">
+    <div class="grp${g.key ? ' grp--link' : ''}"${go}>
       <div class="grp__head">
-        <span class="grp__name">${esc(g.name)}</span>
+        <span class="grp__name">${esc(g.name)}${arrow}</span>
         ${g.last !== null ? `<span class="grp__last">${relDay(g.last)}</span>`
           : g.share != null ? `<span class="grp__last">${g.share} % maturity</span>` : ''}
       </div>
@@ -917,6 +927,13 @@ function applyImport(text) {
    UDALOSTI
 ================================================================== */
 document.addEventListener('click', (e) => {
+  const goto = e.target.closest('[data-goto]');
+  if (goto) {
+    Object.assign(filters, { subject: goto.dataset.goto, grade: 'all', q: '' });
+    location.hash = '#/temy';
+    return;
+  }
+
   const ans = e.target.closest('[data-answer]');
   if (ans) return answer(ans.dataset.answer);
 

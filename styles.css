@@ -413,3 +413,8 @@ code { font-family: var(--mono); font-size: .9em; }
 }
 .tag--dup { color: var(--c); border-color: color-mix(in srgb, var(--c) 40%, var(--line)); }
 .sheet__tags { margin-top: 6px; }
+
+/* ---------- Prehľad: riadok predmetu ako odkaz na jeho témy ---------- */
+.grp--link { cursor: pointer; border-radius: 10px; margin-left: -8px; margin-right: -8px; padding: 6px 8px; }
+.grp--link:active { background: var(--line-soft); }
+.grp__arrow { margin-left: 6px; color: var(--ink-faint); }
