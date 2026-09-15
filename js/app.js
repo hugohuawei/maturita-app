@@ -4,7 +4,7 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v11';
+const BUILD = 'v12';
 const BUILD_DATE = '15. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
@@ -46,15 +46,15 @@ function fmtDate(iso) {
 }
 
 /* ---------- stav -------------------------------------------------- */
-const STATE_VERSION = 5;
+const STATE_VERSION = 6;
 
 /* Musí byť definované pred `load()` nižšie — migrácia to volá už pri štarte. */
 /* 15. 9. 2026: jednorazovo nastavené, čo chodí v kole — všetko ostatné
    pozastavené. Neskoršie pozastavenia v appke to už neprepíše.
-   ANJ: Family, Housing, Health Care, Food, Sports, Shopping and Services,
-   Art and Culture, Communication, Jobs, Human Relationships, Banking and
-   Finances, Learning Languages. */
-const ANJ_ACTIVE = [1, 2, 3, 8, 11, 12, 14, 17, 20, 23, 26, 27];
+   ANJ (čísla lekcií): Family, Culture and Art, Sports and Games, Housing,
+   Food, Shopping, Banking and Finances, Health Care, Jobs, Human
+   Relationships, Communication, Learning Languages. */
+const ANJ_ACTIVE = [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 14, 15];
 const FOCUS_2026_09 = (t) =>
   t.subject === 'sjl' ||
   (t.subject === 'obn-pol' && t.num <= 7) ||
@@ -83,6 +83,7 @@ function reconcile(s) {
   s.topics ??= {};
   const from = s.version | 0 || 1;
   migrate(s);
+  const existed = new Set(Object.keys(s.topics));
   s.queue ??= [];
   s.history ??= [];
   s.settings = Object.assign({ roundSize: ROUND_DEFAULT, timer: true, mapping: false }, s.settings);
@@ -104,10 +105,16 @@ function reconcile(s) {
 
   if (s.round && (!Array.isArray(s.round.ids) || !s.round.ids.every((id) => CATALOG.has(id)))) s.round = null;
 
-  if (from < 5) {
-    // z v4 už bol fokus nastavený — po návrate čísel ho zopakuj len pre angličtinu
+  if (from < 6) {
     for (const t of TOPICS) {
-      if (from < 4 || t.subject === 'anj') s.topics[t.id].paused = !FOCUS_2026_09(t);
+      const e = s.topics[t.id];
+      if (from < 4) e.paused = !FOCUS_2026_09(t);
+      else if (t.subject === 'anj') {
+        // v4: po prečíslovaní zopakuj fokus pre angličtinu.
+        // v5: pozastavenie išlo s témou podľa názvu; lekcie bez predchodcu začínajú pozastavené.
+        if (from === 4) e.paused = !FOCUS_2026_09(t);
+        else if (!existed.has(t.id)) e.paused = true;
+      }
     }
     if (s.round && s.round.ids.some((id) => s.topics[id].paused)) s.round = null;
   }
@@ -167,6 +174,33 @@ function migrate(s) {
       s.round = s.round.ids.every(back) ? { ...s.round, ids: s.round.ids.map(back) } : null;
     }
     s.mapAfter = back(s.mapAfter);
+  }
+
+  /* v5 → v6: angličtina podľa učebnice (Lekcia 1–30). Postup, otázky aj
+     pozastavenie idú s témou podľa názvu. Staré „English-Speaking
+     Countries“ sa rozdelili na UK a USA — jej postup, ak nejaký bol,
+     sa odloží do `archived`. */
+  if (v < 6) {
+    const BOOK = { 1: 1, 2: 4, 3: 8, 4: 21, 5: 9, 6: 12, 7: 20, 8: 5, 9: 23, 10: 19,
+                   11: 3, 12: 6, 13: 22, 14: 2, 15: 26, 16: 16, 17: 14, 18: 17, 19: 18,
+                   20: 10, 21: 13, 22: 27, 23: 11, 24: 30, 26: 7, 27: 15 };
+    const book = (id) => {
+      const m = /^anj-(\d+)$/.exec(id || '');
+      if (!m) return id;
+      return BOOK[+m[1]] ? `anj-${pad(BOOK[+m[1]])}` : null;
+    };
+    const topics = {};
+    for (const [id, e] of Object.entries(s.topics)) {
+      const to = book(id);
+      if (to) topics[to] = e;
+      else if (e && (e.count || e.note || e.title || e.otazky?.length)) (s.archived ??= {})[`v11-${id}`] = e;
+    }
+    s.topics = topics;
+    s.queue = (s.queue || []).map(book).filter(Boolean);
+    if (s.round && Array.isArray(s.round.ids)) {
+      s.round = s.round.ids.every(book) ? { ...s.round, ids: s.round.ids.map(book) } : null;
+    }
+    s.mapAfter = book(s.mapAfter);
   }
 
   s.version = STATE_VERSION;

@@ -282,10 +282,10 @@ const BIO = [
 ];
 
 /* --- Angličtina (30) --------------------------------------------
-   [názov, otázky]. Pri angličtine sa nevybavujú fakty — karta ukáže
-   jednu náhodnú otázku a hovorí sa nahlas 90 sekúnd. Otázky sa dajú
-   dopĺňať priamo v appke (Témy → klik na tému). Pôvodné číslovanie
-   1–25 ostáva; 26 a 27 pribudli, 28–30 sú zatiaľ `Doplniť`. */
+   [názov, otázky]. Poradie a názvy podľa učebnice (Lekcia 1–30).
+   Pri angličtine sa nevybavujú fakty — karta ukáže jednu náhodnú otázku
+   a hovorí sa nahlas 90 sekúnd. Otázky sa dajú dopĺňať priamo v appke
+   (Témy → klik na tému). */
 const ANJ_COUNT = 30;
 const ANJ = [
   ['Family', [
@@ -294,32 +294,35 @@ const ANJ = [
     'Are family values changing in Slovakia? Why?',
     'Should grandparents live with their children?',
   ]],
+  ['Culture and Art', []],
+  ['Sports and Games', []],
   ['Housing', []],
-  ['Health Care', []],
-  ['Travelling and Transport', []],
-  ['Education', []],
-  ['People and Nature', []],
-  ['Free Time, Hobbies and Lifestyle', []],
   ['Food', []],
-  ['Multicultural Society', []],
-  ['Fashion and Clothing', []],
-  ['Sports', []],
-  ['Shopping and Services', []],
-  ['Countries, Towns and Places', []],
-  ['Art and Culture', []],
-  ['Books and Literature', []],
-  ['People and Society', []],
-  ['Communication and Its Forms', []],
-  ['Mass Media', []],
-  ['Young People and Their World', []],
-  ['Jobs and Employment', []],
-  ['Science and Technology', []],
-  ['Examples and Ideals', []],
-  ['Human Relationships', []],
-  ['Slovakia', []],
-  ['English-Speaking Countries', []],
+  ['Shopping', []],
   ['Banking and Finances', []],
+  ['Health Care', []],
+  ['Education', []],
+  ['Jobs', []],
+  ['Human Relationships', []],
+  ['People and Nature', []],
+  ['Science and Technology', []],
+  ['Communication – Its Means and Forms', []],
   ['Learning Languages', []],
+  ['People and Society', []],
+  ['Mass Media', []],
+  ['The Young and Their World', []],
+  ['Fashion', []],
+  ['Hobbies, Leisure and Lifestyle', []],
+  ['Travelling', []],
+  ['Towns and Places', []],
+  ['Multicultural Society and International Institutions', []],
+  ['Public Holidays', []],
+  ['Crime and Justice', []],
+  ['Reading Books', []],
+  ['Idols, Celebrities and Famous Personalities', []],
+  ['The United Kingdom', []],
+  ['The United States of America', []],
+  ['Slovakia – My Homeland', []],
 ];
 
 /* --- Zostavenie katalógu ----------------------------------------- */
