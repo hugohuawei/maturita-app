@@ -4,8 +4,8 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v9';
-const BUILD_DATE = '14. 9. 2026';
+const BUILD = 'v10';
+const BUILD_DATE = '15. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
 
@@ -46,7 +46,7 @@ function fmtDate(iso) {
 }
 
 /* ---------- stav -------------------------------------------------- */
-const STATE_VERSION = 3;
+const STATE_VERSION = 4;
 
 function freshState() {
   return { version: STATE_VERSION, queue: [], topics: {}, round: null, history: [], mapAfter: null,
@@ -67,6 +67,7 @@ function load() {
 function reconcile(s) {
   s.version ??= 1;
   s.topics ??= {};
+  const from = s.version | 0 || 1;
   migrate(s);
   s.queue ??= [];
   s.history ??= [];
@@ -89,8 +90,22 @@ function reconcile(s) {
 
   if (s.round && (!Array.isArray(s.round.ids) || !s.round.ids.every((id) => CATALOG.has(id)))) s.round = null;
 
+  if (from < 4) {
+    for (const t of TOPICS) s.topics[t.id].paused = !FOCUS_2026_09(t);
+    if (s.round && s.round.ids.some((id) => s.topics[id].paused)) s.round = null;
+  }
   return s;
 }
+
+/* v3 → v4 (15. 9. 2026): jednorazovo nastavené, čo chodí v kole — všetko
+   ostatné pozastavené. Neskoršie pozastavenia v appke to už neprepíše. */
+const ANJ_ACTIVE = [15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 28, 29];
+const FOCUS_2026_09 = (t) =>
+  t.subject === 'sjl' ||
+  (t.subject === 'obn-pol' && t.num <= 7) ||
+  (t.subject === 'obn-eko' && t.num === 1) ||
+  (t.subject === 'bio' && t.num === 1) ||
+  (t.subject === 'anj' && ANJ_ACTIVE.includes(t.num));
 
 /* Migrácie uloženého stavu. Bežia pred spárovaním s katalógom, aby sa
    prečíslované témy nezaložili ako nové. */
@@ -119,6 +134,31 @@ function migrate(s) {
     s.queue = (s.queue || []).map(shift);
     if (s.round && Array.isArray(s.round.ids)) s.round.ids = s.round.ids.map(shift);
     s.mapAfter = shift(s.mapAfter);
+  }
+
+  /* v3 → v4: angličtina má 30 tém v novom poradí. Témy, ktoré sa dajú
+     jednoznačne spárovať so starým zoznamom 25, si berú svoj postup so
+     sebou. Ostatné staré ANJ záznamy s nejakým postupom sa odložia do
+     `archived` (ostávajú v exporte), aby sa neprilepili na cudzie číslo. */
+  if (v < 4) {
+    const ANJ_MOVE = { 1: 15, 2: 18, 3: 22, 8: 19, 11: 17, 12: 20, 14: 16, 17: 28, 20: 24, 23: 25 };
+    const move = (id) => {
+      const m = /^anj-(\d+)$/.exec(id || '');
+      if (!m) return id;
+      return ANJ_MOVE[+m[1]] ? `anj-${pad(ANJ_MOVE[+m[1]])}` : null;
+    };
+    const topics = {};
+    for (const [id, e] of Object.entries(s.topics)) {
+      const to = move(id);
+      if (to) topics[to] = e;
+      else if (e && (e.count || e.note || e.title || e.otazky?.length)) (s.archived ??= {})[id] = e;
+    }
+    s.topics = topics;
+    s.queue = (s.queue || []).map(move).filter(Boolean);
+    if (s.round && Array.isArray(s.round.ids)) {
+      s.round = s.round.ids.every(move) ? { ...s.round, ids: s.round.ids.map(move) } : null;
+    }
+    s.mapAfter = move(s.mapAfter);
   }
 
   s.version = STATE_VERSION;

@@ -281,42 +281,30 @@ const BIO = [
   ['Biológia živočíchov a človeka', 'Pohlavné a nepohlavné rozmnožovanie, embryonálny vývin'],
 ];
 
-/* --- Angličtina (25) --------------------------------------------
-   [názov, otázky]. Pri angličtine sa nevybavujú fakty — karta ukáže
-   jednu náhodnú otázku a hovorí sa nahlas 90 sekúnd. Otázky sa dajú
-   dopĺňať priamo v appke (Témy → klik na tému). */
-const ANJ = [
-  ['Family', [
+/* --- Angličtina (30) --------------------------------------------
+   Pri angličtine sa nevybavujú fakty — karta ukáže jednu náhodnú otázku
+   a hovorí sa nahlas 90 sekúnd. Otázky sa dajú dopĺňať priamo v appke
+   (Témy → klik na tému). Čísla bez názvu sú zatiaľ `Doplniť`, pozastavené. */
+const ANJ_COUNT = 30;
+const ANJ = {
+  15: ['Family', [
     'Describe your family.',
     'What are the advantages of a large family?',
     'Are family values changing in Slovakia? Why?',
     'Should grandparents live with their children?',
   ]],
-  ['Housing', []],
-  ['Health Care', []],
-  ['Travelling and Transport', []],
-  ['Education', []],
-  ['People and Nature', []],
-  ['Free Time, Hobbies and Lifestyle', []],
-  ['Food', []],
-  ['Multicultural Society', []],
-  ['Fashion and Clothing', []],
-  ['Sports', []],
-  ['Shopping and Services', []],
-  ['Countries, Towns and Places', []],
-  ['Art and Culture', []],
-  ['Books and Literature', []],
-  ['People and Society', []],
-  ['Communication and Its Forms', []],
-  ['Mass Media', []],
-  ['Young People and Their World', []],
-  ['Jobs and Employment', []],
-  ['Science and Technology', []],
-  ['Examples and Ideals', []],
-  ['Human Relationships', []],
-  ['Slovakia', []],
-  ['English-Speaking Countries', []],
-];
+  16: ['Culture and Art', []],
+  17: ['Sport and Games', []],
+  18: ['Housing', []],
+  19: ['Food and Drinks', []],
+  20: ['Shopping and Services', []],
+  21: ['Banking and Finances', []],
+  22: ['Health Care', []],
+  24: ['Jobs', []],
+  25: ['Human Relationships', []],
+  28: ['Communication', []],
+  29: ['Learning Languages', []],
+};
 
 /* --- Zostavenie katalógu ----------------------------------------- */
 const pad = (n) => String(n).padStart(2, '0');
@@ -357,9 +345,11 @@ const TOPICS = [
              vetva: seminar ? 'seminár' : 'štvorhodinovka', ...(num === 41 && { sporna: true }) };
   }),
 
-  ...ANJ.map(([title, otazky], i) => ({
-    id: `anj-${pad(i + 1)}`, subject: 'anj', num: i + 1, title, otazky,
-  })),
+  ...Array.from({ length: ANJ_COUNT }, (_, i) => {
+    const num = i + 1;
+    const [title, otazky] = ANJ[num] || [PLACEHOLDER, []];
+    return { id: `anj-${pad(num)}`, subject: 'anj', num, title, otazky, ...(!ANJ[num] && { paused: true }) };
+  }),
 ];
 
 const BIO_TC = [...new Set(BIO.map(([tc]) => tc))];
