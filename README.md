@@ -31,6 +31,14 @@ Prepínač v Systéme → Kolo. Keď je zapnutý, známky sa ukladajú, ale tém
 čísla, kolo za kolom. Slúži na prvé zmapovanie, čo vieš. Na obrazovke Dnes to
 označuje štítok `mapovanie`. Po vypnutí platí normálny algoritmus.
 
+## Úprava tém
+
+Témy → klik na tému. Dá sa prepísať **názov**, **podnázov** (pri SJL literárna
+časť) a **obsah** — autori, diela, pojmy. Obsah sa na karte ukáže až po
+ohodnotení alebo cez „Ukázať rozsah“, nikdy pred vybavovaním. Úpravy sa ukladajú
+do stavu (idú s exportom); katalóg ostáva nedotknutý. „Vrátiť pôvodné znenie“
+zruší všetky úpravy témy naraz. Vyhľadávanie hľadá aj v obsahu.
+
 ## Angličtina sa správa inak
 
 Pri ANJ témach karta neukáže názov, ale **jednu náhodnú otázku** z poľa

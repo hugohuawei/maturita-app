@@ -418,3 +418,18 @@ code { font-family: var(--mono); font-size: .9em; }
 .grp--link { cursor: pointer; border-radius: 10px; margin-left: -8px; margin-right: -8px; padding: 6px 8px; }
 .grp--link:active { background: var(--line-soft); }
 .grp__arrow { margin-left: 6px; color: var(--ink-faint); }
+
+/* ---------- úprava témy: názov, podnázov, obsah ---------------------- */
+.sheet__field { display: block; margin-bottom: 10px; }
+.sheet__field b {
+  display: block; margin-bottom: 6px; font-size: 11.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+}
+.sheet__field .sheet__title { margin-bottom: 0; }
+.sheet__sub {
+  width: 100%; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--surface); -webkit-appearance: none;
+  font-family: var(--serif); font-size: 16px; color: var(--ink-soft);
+}
+.scope { white-space: pre-line; }

@@ -4,8 +4,8 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v12';
-const BUILD_DATE = '15. 9. 2026';
+const BUILD = 'v13';
+const BUILD_DATE = '22. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
 
@@ -46,7 +46,7 @@ function fmtDate(iso) {
 }
 
 /* ---------- stav -------------------------------------------------- */
-const STATE_VERSION = 6;
+const STATE_VERSION = 7;
 
 /* Musí byť definované pred `load()` nižšie — migrácia to volá už pri štarte. */
 /* 15. 9. 2026: jednorazovo nastavené, čo chodí v kole — všetko ostatné
@@ -97,7 +97,8 @@ function reconcile(s) {
   for (const t of TOPICS) {
     if (!s.topics[t.id]) {
       s.topics[t.id] = { grade: null, last: null, count: 0,
-                         paused: !!t.paused, note: '', title: null, nSince: null, otazky: null };
+                         paused: !!t.paused, note: '', title: null, sub: null, rozsah: null,
+                         nSince: null, otazky: null };
     }
     if (!known.has(t.id)) fresh.push(t.id);
   }
@@ -203,6 +204,22 @@ function migrate(s) {
     s.mapAfter = book(s.mapAfter);
   }
 
+  /* v6 → v7: názov a podnázov sa ukladajú zvlášť. Staré premenovanie
+     (celý názov v jednom poli) sa rozdelí tak, ako sa delilo na karte. */
+  if (v < 7) {
+    for (const [id, e] of Object.entries(s.topics)) {
+      if (!e || !e.title) continue;
+      const sjl = id.startsWith('sjl-');
+      const sep = e.title.includes(' · ') ? ' · ' : (sjl && e.title.indexOf('. ') > 0 ? '. ' : null);
+      if (sep) {
+        const i = e.title.indexOf(sep);
+        [e.title, e.sub] = [e.title.slice(0, i), e.title.slice(i + sep.length)];
+      } else {
+        e.sub = sjl ? '' : null;
+      }
+    }
+  }
+
   s.version = STATE_VERSION;
 }
 
@@ -217,19 +234,28 @@ function save() {
 
 /* ---------- odvodené dáta ---------------------------------------- */
 const st = (id) => state.topics[id];
-const titleOf = (id) => st(id)?.title || CATALOG.get(id).title;
-const scopeOf = (id) => CATALOG.get(id)?.rozsah || '';
+/* Názov, podnázov a obsah témy. Pôvodné znenie je v katalógu; čo prepíšeš
+   v appke, uloží sa k tebe do stavu (null = drž sa katalógu). */
+function catalogParts(id) {
+  const t = CATALOG.get(id);
+  if (t.subject === 'sjl') {
+    const i = t.title.indexOf('. ');
+    if (i > 0) return [t.title.slice(0, i), t.title.slice(i + 2)];
+  }
+  return [t.title, ''];
+}
+const nameOf = (id) => st(id)?.title ?? catalogParts(id)[0];
+const subOf = (id) => st(id)?.sub ?? catalogParts(id)[1];
+const titleOf = (id) => {
+  const n = nameOf(id), sub = subOf(id);
+  return sub ? `${n}${CATALOG.get(id).subject === 'sjl' ? '. ' : ' · '}${sub}` : n;
+};
+const scopeOf = (id) => st(id)?.rozsah ?? CATALOG.get(id)?.rozsah ?? '';
 const isAnj = (id) => CATALOG.get(id)?.subject === 'anj';
 
-/** SJL téma má jazykovú a literárnu časť — na karte pod sebou. */
+/** Na karte pod sebou: názov a podnázov (pri SJL jazyková a literárna časť). */
 function titleParts(id) {
-  const t = titleOf(id);
-  if (t.includes(' · ')) return t.split(' · ');
-  if (CATALOG.get(id).subject === 'sjl') {
-    const i = t.indexOf('. ');
-    if (i > 0) return [t.slice(0, i), t.slice(i + 2)];
-  }
-  return [t];
+  return [nameOf(id), subOf(id)].filter(Boolean);
 }
 
 /** Štítky navyše: vetva biológie, možná duplicita v občianskej. */
@@ -677,7 +703,7 @@ function viewTopics() {
     if (filters.grade === 'U' && s.grade) return false;
     if (filters.grade === 'P' && !s.paused) return false;
     if (['V', 'C', 'N'].includes(filters.grade) && s.grade !== filters.grade) return false;
-    if (filters.q && !titleOf(t.id).toLowerCase().includes(filters.q.toLowerCase())) return false;
+    if (filters.q && !`${titleOf(t.id)} ${scopeOf(t.id)}`.toLowerCase().includes(filters.q.toLowerCase())) return false;
     return true;
   });
 
@@ -721,9 +747,16 @@ function openSheet(id) {
   sheet.innerHTML = `
     <div class="sheet" role="dialog" aria-modal="true">
       <div class="sheet__meta">${esc(SUBJ.get(t.subject).name)} · téma ${t.num}${t.tc ? ' · ' + esc(t.tc) : ''}${tagsOf(t) ? `<div class="sheet__tags">${tagsOf(t)}</div>` : ''}</div>
-      <input class="sheet__title" id="s-title" value="${esc(titleOf(id))}" aria-label="Názov témy">
+      <label class="sheet__field"><b>Názov</b>
+        <input class="sheet__title" id="s-title" value="${esc(nameOf(id))}" placeholder="${esc(catalogParts(id)[0])}">
+      </label>
+      <label class="sheet__field"><b>Podnázov</b>
+        <input class="sheet__sub" id="s-sub" value="${esc(subOf(id))}" placeholder="${t.subject === 'sjl' ? 'Literárna časť' : 'Nepovinné — spresnenie témy'}">
+      </label>
+      <label class="sheet__qs"><b>Obsah — autori, diela, pojmy</b>
+        <textarea id="s-rozsah" rows="4" placeholder="Na karte sa ukáže až po ohodnotení alebo cez „Ukázať rozsah“.">${esc(scopeOf(id))}</textarea>
+      </label>
       <input class="sheet__note" id="s-note" value="${esc(s.note)}" placeholder="Poznámka, jeden riadok" aria-label="Poznámka">
-      ${scopeOf(id) ? `<div class="sheet__scope"><b>Rozsah</b>${esc(scopeOf(id))}</div>` : ''}
       ${isAnj(id) ? `
         <label class="sheet__qs"><b>Otázky — jedna na riadok</b>
           <textarea id="s-qs" rows="4" placeholder="Describe your family.&#10;What are the advantages of a large family?">${esc(questionsOf(id).join('\n'))}</textarea>
@@ -740,13 +773,20 @@ function openSheet(id) {
         <span>Vo fronte ${pos < 0 ? '—' : pos + 1}.</span>
       </div>
       <button class="ghost" data-sheet-pause>${s.paused ? 'Zaradiť späť do kola' : 'Pozastaviť tému'}</button>
+      ${[s.title, s.sub, s.rozsah, s.otazky].some((x) => x != null)
+        ? '<button class="ghost" data-sheet-reset>Vrátiť pôvodné znenie</button>' : ''}
       <button class="ghost" data-sheet-close>Zavrieť</button>
     </div>`;
   document.body.appendChild(sheet);
 
   const commit = () => {
+    const [cName, cSub] = catalogParts(id);
     const nt = $('#s-title', sheet).value.trim();
-    s.title = (!nt || nt === CATALOG.get(id).title) ? null : nt;
+    s.title = (!nt || nt === cName) ? null : nt;
+    const ns = $('#s-sub', sheet).value.trim();
+    s.sub = ns === cSub ? null : ns;
+    const nr = $('#s-rozsah', sheet).value.trim();
+    s.rozsah = nr === (t.rozsah || '') ? null : nr;
     s.note = $('#s-note', sheet).value.trim();
     const qsEl = $('#s-qs', sheet);
     if (qsEl) {
@@ -764,6 +804,12 @@ function openSheet(id) {
     const g = e.target.closest('[data-sheet-grade]');
     if (g) { commit(); grade(id, g.dataset.sheetGrade); sheet.remove(); render(); return; }
     if (e.target.closest('[data-sheet-pause]')) { s.paused = !s.paused; close(); }
+    if (e.target.closest('[data-sheet-reset]')) {
+      if (!confirm('Vrátiť názov, podnázov, obsah aj otázky na pôvodné znenie?')) return;
+      s.title = s.sub = s.rozsah = s.otazky = null;
+      ask = null;
+      save(); sheet.remove(); render(); openSheet(id);
+    }
   });
 }
 
