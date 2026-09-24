@@ -4,8 +4,8 @@
 ================================================================== */
 
 const KEY = 'maturita.v1';
-const BUILD = 'v13';
-const BUILD_DATE = '22. 9. 2026';
+const BUILD = 'v14';
+const BUILD_DATE = '24. 9. 2026';
 const ROUND_DEFAULT = 5;
 const TIMER_SECONDS = 90;
 
@@ -350,24 +350,69 @@ function pace() {
 /** V mapovacom kole ide poradie striktne podľa čísla témy, inak z frontu. */
 function nextIds() {
   const size = state.settings.roundSize;
-  const ids = [];
   if (state.settings.mapping) {
+    const ids = [];
     const all = TOPICS.map((t) => t.id).filter(isActive);
     let start = state.mapAfter ? all.indexOf(state.mapAfter) + 1 : 0;
     if (start <= 0 || start >= all.length) start = 0;
     for (let i = start; i < all.length && ids.length < size; i++) ids.push(all[i]);
     state.mapAfter = ids[ids.length - 1] || null;
-  } else {
-    for (const id of state.queue) {
-      if (isActive(id)) ids.push(id);
-      if (ids.length >= size) break;
+    return ids;
+  }
+
+  /* Fronta je zoradená podľa katalógu, takže zhora je samá slovenčina a na
+     ostatné predmety sa kolo nedostane. Preto sa berie z každého predmetu
+     ďalšia téma zhora, dokola — poradie predmetov sa medzi kolami posúva.
+     Téma hodnotená dnes ide bokom, aby sa v ten istý deň nevracala. */
+  const today = dayKey();
+  const cerstve = [], dnesUzBolo = [];
+  for (const id of state.queue) {
+    if (!isActive(id)) continue;
+    const last = st(id).last;
+    (last && dayKey(new Date(last)) === today ? dnesUzBolo : cerstve).push(id);
+  }
+
+  const ids = [];
+  for (const pool of [cerstve, dnesUzBolo]) {
+    if (ids.length >= size) break;
+    for (const id of poPredmetoch(pool, size - ids.length)) {
+      if (!ids.includes(id)) ids.push(id);
     }
   }
   return ids;
 }
 
+/** Vyberie `size` tém tak, že sa strieda predmet po predmete. */
+function poPredmetoch(pool, size) {
+  const podla = new Map();
+  for (const id of pool) {
+    const k = CATALOG.get(id).subject;
+    if (!podla.has(k)) podla.set(k, []);
+    podla.get(k).push(id);
+  }
+  const keys = [...podla.keys()];
+  if (!keys.length) return [];
+  const off = (state.roundNo | 0) % keys.length;
+  const poradie = [...keys.slice(off), ...keys.slice(0, off)];
+
+  const out = [];
+  for (let i = 0; out.length < size; i++) {
+    let pridane = false;
+    for (const k of poradie) {
+      const id = podla.get(k)[i];
+      if (!id) continue;
+      out.push(id);
+      pridane = true;
+      if (out.length >= size) break;
+    }
+    if (!pridane) break;
+  }
+  return out;
+}
+
 function startRound() {
   const ids = nextIds();
+  state.roundNo = (state.roundNo | 0) + 1;
   reveal = false; after = null; ask = null;
   state.round = ids.length ? { ids, idx: 0, V: 0, C: 0, N: 0 } : null;
   save();
@@ -521,9 +566,7 @@ const ANJ_KEY = `
 
 function roundIntro() {
   const active = idsOf((t) => isActive(t.id));
-  const next = state.settings.mapping
-    ? (() => { const keep = state.mapAfter; const r = nextIds(); state.mapAfter = keep; return r; })()
-    : state.queue.filter(isActive).slice(0, state.settings.roundSize);
+  const next = (() => { const keep = state.mapAfter; const r = nextIds(); state.mapAfter = keep; return r; })();
   return `
     <div class="pad">
       <h1 class="h1">Dnešné kolo${modeTag()}</h1>
@@ -894,6 +937,7 @@ function viewSystem() {
       <p class="small">4–5 tém, ~3 minúty na tému:</p>
       <ol class="steps">
         <li>Prečítaj <b>len názov témy</b> (pri ANJ: jednu otázku)</li>
+        <li class="muted">Kolo mieša predmety — z každého ide ďalšia téma zhora, takže každý deň prejdeš všetky</li>
         <li>Zavri všetko, 90 sekúnd hovor alebo píš spamäti — potom stop</li>
         <li>Skontroluj proti vlastným poznámkam v Notability</li>
         <li>Označ V / Č / N</li>

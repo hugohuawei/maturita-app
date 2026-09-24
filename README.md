@@ -24,6 +24,11 @@ Jeden front. Po ohodnotení sa téma vráti do frontu:
 Nehodnotené témy stoja na začiatku. Pozastavené sa v kole preskakujú, ale
 z frontu nevypadnú.
 
+Do kola sa témy **berú z každého predmetu zvlášť** — ďalšia zhora, dokola,
+s posunom poradia medzi kolami. Bez toho by kolo uviazlo na začiatku frontu
+(samá slovenčina), lebo Č aj N vracajú tému späť do jeho prednej časti.
+Téma hodnotená dnes sa v ten istý deň nevracia, kým je z čoho vyberať.
+
 ### Mapovacie kolo
 
 Prepínač v Systéme → Kolo. Keď je zapnutý, známky sa ukladajú, ale téma sa
